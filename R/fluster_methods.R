@@ -52,9 +52,9 @@
 #'   \item{graph}{A graph that can be used for visualization}
 #' }
 #' @examples
-#' load(system.file("extdata", "sampled_flowset_young.rda", package = "panoplyCF"))
+#' load(system.file("extdata", "sampled_flowset_young.rda", package = "fluster"))
 #' flust_params = c(7:9, 11:22)
-#' flust_ojb = fluster(myfcs, parameters = flust_params)
+#' flust_obj = fluster(fs_young, parameters = flust_params)
 #' @export
 fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL) {
   if (is(fcs, "flowFrame")) {

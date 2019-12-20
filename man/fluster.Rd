@@ -43,7 +43,7 @@ multivariate bin centroids are clustered using agglommerative hierarchical clust
 for visualization and interpretation.
 }
 \examples{
-load(system.file("extdata", "sampled_flowset_young.rda", package = "panoplyCF"))
+load(system.file("extdata", "sampled_flowset_young.rda", package = "fluster"))
 flust_params = c(7:9, 11:22)
-flust_ojb = fluster(myfcs, parameters = flust_params)
+flust_obj = fluster(fs_young, parameters = flust_params)
 }
