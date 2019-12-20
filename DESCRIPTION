@@ -1,0 +1,27 @@
+Package: fluster
+Type: Package
+Title: Fingerprint-based clustering of flow cytometry data
+Version: 0.1.0
+Author: Wade Rogers
+Maintainer: Wade Rogers <wade.rogers@spcytomics.com>
+Description: Fluster combines the speed and efficiency of Cytometric
+    Fingerprinting (implemented in flowFP) with hierarchical agglomerative clustering.
+    Conventional clustering is too slow to deal with the millions of data points (events)
+    that are commonly encountered in flow cytometry data.
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+biocViews:
+Depends: 
+    R (>= 3.4.0),
+    flowCore (>= 1.42.0)
+Imports: 
+    flowCore,
+    flowFP, 
+    igraph,
+    cluster,
+    fields
+RoxygenNote: 7.0.2
+Suggests: knitr, rmarkdown
+VignetteBuilder: knitr
