@@ -63,17 +63,9 @@ filename = system.file("extdata", "sampled_flowset_young.rda", package = "fluste
 load(filename)   # fs_young
 is(fs_young)
 
-# # aggregate the data
-# # NOTE: I had to do this to get the vignette to knit, but you should
-# # be able to feed a flowSet directly to panoply()
-# # 
-# ff = suppressWarnings(as(fs_young, "flowFrame"))
-# ff
-# flowCore::exprs(ff) = flowCore::exprs(ff)[,which(colnames(flowCore::exprs(ff)) != "Original")]
-# 
-# # choose the parameters to be included in the analysis.  In this case,
-# # exclude the scattering and LIVEDEAD markers as they were previously used to 
-# # gate the data.
+# choose the parameters to be included in the analysis.  In this case,
+# exclude the scattering and LIVEDEAD markers as they were previously used to
+# gate the data.
 flust_params = flowCore::colnames(fs_young)[c(7:9, 11:22)]
 flust_params
 
