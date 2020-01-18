@@ -66,7 +66,7 @@ draw_color_scale = function(min_col_value = 0, max_col_value = 5, ...) {
     y = vec[i]
     segments(x0 = 0, y0 = y, x1 = 1, y1 = y, col = cols[i], lwd = 3)
   }
-  ax(axis = 2, instrument = 'diva', type = 'biexp', ...)
+  ax(axis = 2, type = 'biexp', ...)
   par(opar)
 }
 
@@ -255,7 +255,7 @@ plot_comm_spread = function(g, markers = NULL, vs = 3, ms = 1, log.size = TRUE, 
   }
 
   # calculate plot layout
-  n = length(markers)
+  n = length(markers) + 1
   sq = sqrt(n)
   frac = sq - floor(sq)
   if(frac == 0) {

@@ -19,6 +19,7 @@ Depends:
 Imports: 
     flowCore,
     flowFP, 
+    wadeTools, 
     igraph,
     cluster,
     fields
