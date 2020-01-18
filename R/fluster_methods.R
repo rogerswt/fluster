@@ -23,6 +23,7 @@
 #' @import igraph
 #' @import flowFP
 #' @import cluster
+#' @import wadeTools
 
 #' @title fluster
 #' @description This function wraps most of what's needed.  It computes a fingerprint
