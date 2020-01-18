@@ -52,6 +52,7 @@ calculate_bin_phenotypes = function(fp, fs, method=c("median", "mean")) {
 
 # assumes biexp vert scale
 draw_color_scale = function(min_col_value = 0, max_col_value = 5, ...) {
+  requireNamespace("wadeTools")
   ll = -0.5
   ul = bx(262143)
 
