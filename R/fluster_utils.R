@@ -302,8 +302,25 @@ advise_n_clust = function(ag, breaks = 500, show = FALSE, ...) {
 
 
   # fit the asymptotic behavior, and look for where it starts to diverge
-  ignore_last = 3
-  npts = 20
+
+  # find a pretty flat region and fit it
+  kde = df2
+  colnames(kde) = c("x", "y")
+  der = deriv1.kde(kde)
+  crit_slope = .001
+  idx = which(abs(der$y) < crit_slope)
+  ignore_last = nrow(df2) - max(idx)
+  npts = length(idx)
+  # ignore_last = 3
+  # npts = 20
+
+  # find the steep part and fit it
+  crit_steep = .01
+  tmp = which(abs(der$y) > crit_steep)
+  tmp = tmp[2:length(tmp)] - tmp[1:(length(tmp)-1)]
+  idx_steep = which(tmp == 1)
+  ln1 = predict(lm(height ~ nclust, data = df2, subset = idx_steep), newdata = df2)
+
 
   idx2 = (nrow(df2) - npts - ignore_last):(nrow(df2) - ignore_last)
   ln2 = predict(lm(height ~ nclust, data = df2, subset = idx2), newdata = df2)
