@@ -43,10 +43,11 @@ carried through the bin indices in the fluster object.
 
 ### Getting started
 
-There are currently only two methods in this package (more later!).
+There are currently only three methods in this package (more later!).
 
 * fluster()
 * plot_fluster()
+* fluster_map_sample()
 
 #### the fluster() method
 The first one performs the above-described fluster calculations and returns an object of class "fluster".
