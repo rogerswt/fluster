@@ -47,10 +47,9 @@
 #' @return An object of class 'fluster', with the following elements:
 #' \describe{
 #'   \item{mod}{The flowFPModel generated}
-#'   \item{mfi}{A list representation of the bin centers}
-#'   \item{centers}{The t-SNE map.  Dots represent bins}
-#'   \item{clustering}{A Vector containing cluster membership of the bins}
+#'   \item{centers}{Multivariate bin centers}
 #'   \item{graph}{A graph that can be used for visualization}
+#'   \item{clustering}{A named list containing cluster membership of the bins}
 #' }
 #' @examples
 #' load(system.file("extdata", "sampled_flowset_young.rda", package = "fluster"))
@@ -95,9 +94,14 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL) {
     message("advising ", nclust, " clusters")
   }
 
-
-
   clusters = cutree(as.hclust(ag), k = nclust)
+
+  c_index = list()
+  for (i in 1:nclust) {
+    idx = which(clusters == i)
+    c_index[[i]] = idx
+  }
+  clst = list(clst = clusters, c_index = c_index)
 
   # set up to plot as a graph
   message("forming a graph representation of clusters...")
@@ -105,7 +109,7 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL) {
   gcomm = make_graph_from_community(comm = cag, g = mst)
   gcomm = attach_layout_fr(gcomm)
 
-  fluster = list(mod = mod, centers = mat, graph = gcomm)
+  fluster = list(mod = mod, centers = mat, graph = gcomm, clustering = clst)
   class(fluster) = "fluster"
 
   fluster
@@ -130,7 +134,35 @@ plot_fluster = function(fluster, markers = colnames(fluster$mat), vs = 10, ms = 
   draw_color_scale(cex.lab = cex.lab)
 }
 
+#' @title Map a Sample to a Fluster Model
+#' @description This function determines, for a single sample, the number of cells in each cluster.
+#' @param ff A sample flowFrame
+#' @param fluster_obj An object of type "fluster", the result of running fluster()
+#' @return  Per-cluster counts and fractions
+#' @export
+fluster_map_sample = function(ff, fluster_obj) {
+  # apply the flowFPModel to the sample
+  fp = flowFP(fcs = ff, model = fluster_obj$mod)
 
+  # get the vector of event bin membership
+  btag = tags(fp)[[1]]
+
+  # assign event cluster membership
+  nclust = max(fluster_obj$clustering$clst)
+  nevents = nrow(ff)
+  c_count = vector('numeric', length = nclust)
+  for (i in 1:nclust) {
+    bidx = fluster_obj$clustering$c_index[[i]]
+    eidx = which(btag %in% bidx)
+    c_count[i] = length(eidx)
+  }
+
+  # convert to percentages of total cells
+  c_pctg = c_count / nevents
+
+  # return the result
+  return(list(counts = c_count, fractions = c_pctg))
+}
 
 
 
