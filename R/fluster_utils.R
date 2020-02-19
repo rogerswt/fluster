@@ -103,6 +103,22 @@ pcolor = function(pvalue, min_value = 0, max_value = 4) {
   col_values
 }
 
+add_bars = function(vals, yvals, col) {
+  hw = 0.4
+  if (length(col) == 1) {
+    col = rep(col, length(vals))
+  }
+  for (i in 1:length(vals)) {
+    rect(xleft = 0, ybottom = yvals[i] - hw, xright = vals[i], ytop = yvals[i] + hw, col = col[i], border = 'black')
+  }
+}
+
+draw_flag = function(y, q1, q3, med = NA, ...) {
+  segments(x0 = q1, y0 = y, x1 = q3, y1 = y, ...)
+  if (!is.na(med)) {points(med, y, pch = 20, ...)}
+}
+
+
 ################################################################################
 ################################################################################
 # here starts igraph stuff

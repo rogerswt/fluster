@@ -164,5 +164,52 @@ fluster_map_sample = function(ff, fluster_obj) {
   return(list(counts = c_count, fractions = c_pctg))
 }
 
+#' @title Visualize Cluster Phenotypes
+#' @description Draw a "phenobar" representation of a cluster phenotype.  Bars have
+#' a height equalt to the medial value of the parameter and are
+#' color-coded.  Error flags represent first and third quartiles of the bin centers
+#' belonging to the cluster.
+#' @param fluster_obj An object of type "fluster", the result of running fluster()
+#' @param parameters Which parameters to include in the plot (default = all parameters)
+#' @param cluster Which cluster to plot.
+#' @export
+fluster_phenobars = function(fluster_obj,
+                             parameters = colnames(fluster_obj$centers),
+                             cluster = 1,
+                             main = paste("Cluster", cluster)) {
 
+  # make an empty plot
+  plot(0, 0, pch = '', xlim = c(0, bx(262143)), ylim = c(1 - .3, length(parameters) + .3),
+       xaxt = 'n', yaxt = 'n',
+       xlab = '', ylab = '',
+       main = main)
+  wadeTools::ax(1, type = 'biexp')
+  axis(side = 2, labels = parameters, at = 1:length(parameters), las = 1)
+
+  centers = fluster_obj$centers
+
+  # get the bin indices of the cluster
+  idx = which(fluster_obj$clustering$clst == cluster)
+
+  med_vec = vector(mode = 'numeric')
+  q1_vec = vector(mode = 'numeric')
+  q3_vec = vector(mode = 'numeric')
+  for (i in 1:length(parameters)) {
+    tmp = fivenum(centers[idx, i])
+    med_vec[i] = tmp[3]
+    q1_vec[i] = tmp[2]
+    q3_vec[i] = tmp[4]
+  }
+  # draw the median
+  col = pcolor(med_vec, min_value = 0, max_value = 5)
+  add_bars(vals = med_vec, yvals = 1:length(parameters), col = col)
+
+
+  # draw the flags
+  for (i in 1:length(parameters)) {
+    draw_flag(y = i, q1 = q1_vec[i], q3 = q3_vec[i], med = NA, cex = 2, lwd = 2)
+
+  }
+
+}
 

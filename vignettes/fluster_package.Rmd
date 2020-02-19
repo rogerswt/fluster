@@ -79,7 +79,7 @@ names(fluster_obj)
 ```
 
 #### the plot_fluster() method
-The second one renders a picture of the result.
+The second one renders a picture of the result using a minimum spanning tree representation.
 
 ```{r, echo=TRUE, eval=FALSE}
 plot_fluster(fluster = fluster_obj)
@@ -89,6 +89,70 @@ plot_fluster(fluster = fluster_obj)
 
 suppressMessages(plot_fluster(fluster = fluster_obj))
 ```
+
+## Cluster phenotypes
+```{r, echo=TRUE, eval=TRUE}
+
+```
+
+## Looking at differential expression of clusters - panoply_map_sample()
+Now that we have a panoply model, we can map other samples to it to look for differential expression.  We've created the panoply model on the flowSet consisting of 10 sub-sampled instances from young people (a better idea might be to aggregate young and old samples and create the panoply model from that aggregate).  We'll load up 10 sub-sampled instances from older people, and look for clusters that seem to differ between the two groups.
+
+***NOTE: in the interest of keeping example data small-ish, the data here are (a) subsampled, and (b) only 10 instances in each group, so this section isn't likely to find much of anything interesting but is included to illustrate the idea.  We encourage you to download \link{https://flowrepository.org/id/FR-FCM-ZZGS} in its entirety and follow this idea on the full data set. ***
+
+```{r, echo=TRUE, eval=TRUE, out.width="100%", fig.height=14, fig.width=14}
+fn_old = system.file("extdata", "sampled_flowset_old.rda", package = "fluster")
+load(fn_old)   # fs_old
+
+nclust = max(fluster_obj$clustering$clst)
+ninst = length(fs_young) + length(fs_old)
+
+# make a matrix to hold results
+sadistics = matrix(NA, nrow = ninst, ncol = nclust)
+k = 1
+for (i in 1:length(fs_young)) {
+  sadistics[k, ] = fluster_map_sample(fs_young[[i]], fluster_obj = fluster_obj)$fraction
+  k = k + 1
+}
+
+for (i in 1:length(fs_old)) {
+  sadistics[k, ] = fluster_map_sample(fs_old[[i]], fluster_obj = fluster_obj)$fraction
+  k = k + 1
+}
+
+# calculate significance
+pval = vector('numeric')
+for (i in 1:ncol(sadistics)) {
+  pval[i] = wilcox.test(sadistics[1:10, i], sadistics[11:20, i], exact = FALSE)$p.value
+}
+
+srt = sort(pval, index.return = TRUE)
+srt$x
+srt$ix
+
+# what are the phenotypes of the significant clusters?
+idx = which(pval <= 0.05)
+opar = par(mfrow = c(2, 2), mar = c(2, 8, 2, 0) + 0.1)
+
+for (i in idx) {
+  fluster_phenobars(fluster_obj = fluster_obj, cluster = i)
+}
+par(opar)
+
+# boxplots
+opar = par(mfrow = c(2, 2), mar = c(4, 4, 2, 0) + 0.1)
+for (i in idx) {
+  clus = paste("cluster_", i, sep = "")
+  tit = sprintf("%s (%.1e)", clus, pval[i])
+  boxplot(sadistics[1:10, i], sadistics[11:20, i], col = c("lightgreen", "pink"), ylab = '', main = tit)
+}
+par(opar)
+
+```
+
+*** BIG CAVEAT: We're not adjusting P values for multiple comparisons (e.g. Bonferroni), because the example data set is too small.  YOU SHOULD DO THIS FOR REAL WORK!! ***
+
+The "significant" clusters are 23, 24, 4 and 8.  Clusters 23, 24 and 4 are CD3+ CD8+ CD45RA+ CCR7+, consistent with CD8 Naive T cells, and they're lower in older folks compared to younger folks.  Cluster 8, which is up in old people, has a phenotype consistent with CD8 Effector Memory T cells.
 
 ## Remarks
 Please note that the package versions 0.1.x are alpha.  It's likely to break.  Please let 

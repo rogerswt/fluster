@@ -2,6 +2,7 @@
 
 export(fluster)
 export(fluster_map_sample)
+export(fluster_phenobars)
 export(plot_fluster)
 import(cluster)
 import(flowFP)
