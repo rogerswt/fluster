@@ -21,6 +21,7 @@
 
 #' @importFrom igraph normalize tree parent
 #' @import igraph
+#' @import fields
 #' @import flowFP
 #' @import cluster
 #' @import wadeTools
