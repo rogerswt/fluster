@@ -23,6 +23,10 @@ Imports:
     igraph,
     cluster,
     fields
+Remotes:
+    bioc::release/flowCore,
+    bioc::release/flowFP,
+    rogerswt/wadeTools
 RoxygenNote: 7.0.2
 Suggests: knitr, rmarkdown
 VignetteBuilder: knitr
