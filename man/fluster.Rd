@@ -20,10 +20,9 @@ will make a guess as to the "best" number of clusters}
 An object of class 'fluster', with the following elements:
 \describe{
 \item{mod}{The flowFPModel generated}
-\item{mfi}{A list representation of the bin centers}
-\item{centers}{The t-SNE map.  Dots represent bins}
-\item{clustering}{A Vector containing cluster membership of the bins}
+\item{centers}{Multivariate bin centers}
 \item{graph}{A graph that can be used for visualization}
+\item{clustering}{A named list containing cluster membership of the bins}
 }
 }
 \description{
