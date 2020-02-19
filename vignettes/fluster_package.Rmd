@@ -90,10 +90,6 @@ plot_fluster(fluster = fluster_obj)
 suppressMessages(plot_fluster(fluster = fluster_obj))
 ```
 
-## Cluster phenotypes
-```{r, echo=TRUE, eval=TRUE}
-
-```
 
 ## Looking at differential expression of clusters - panoply_map_sample()
 Now that we have a panoply model, we can map other samples to it to look for differential expression.  We've created the panoply model on the flowSet consisting of 10 sub-sampled instances from young people (a better idea might be to aggregate young and old samples and create the panoply model from that aggregate).  We'll load up 10 sub-sampled instances from older people, and look for clusters that seem to differ between the two groups.
@@ -144,13 +140,17 @@ opar = par(mfrow = c(2, 2), mar = c(4, 4, 2, 0) + 0.1)
 for (i in idx) {
   clus = paste("cluster_", i, sep = "")
   tit = sprintf("%s (%.1e)", clus, pval[i])
-  boxplot(sadistics[1:10, i], sadistics[11:20, i], col = c("lightgreen", "pink"), ylab = '', main = tit)
+  boxplot(sadistics[1:10, i], sadistics[11:20, i], 
+          col = c("lightgreen", "pink"), 
+          names = c("Young", "Old"),
+          ylab = '', 
+          main = tit)
 }
 par(opar)
 
 ```
 
-*** BIG CAVEAT: We're not adjusting P values for multiple comparisons (e.g. Bonferroni), because the example data set is too small.  YOU SHOULD DO THIS FOR REAL WORK!! ***
+***BIG CAVEAT: We're not adjusting P values for multiple comparisons (e.g. Bonferroni), because the example data set is too small.  YOU SHOULD DO THIS FOR REAL WORK!!***
 
 The "significant" clusters are 23, 24, 4 and 8.  Clusters 23, 24 and 4 are CD3+ CD8+ CD45RA+ CCR7+, consistent with CD8 Naive T cells, and they're lower in older folks compared to younger folks.  Cluster 8, which is up in old people, has a phenotype consistent with CD8 Effector Memory T cells.
 
