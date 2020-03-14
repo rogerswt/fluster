@@ -549,7 +549,6 @@ parameter_modality = function(ff, parameters = detect_fl_parameters(ff), crit = 
 
   names(pv) = parameters
   unimodal = pv > crit
-  names(unimodal) = parameters
 
   # calculate hi/lo thresholds, conditioned on modality
   thresh = vector(mode = 'numeric')
@@ -570,7 +569,8 @@ parameter_modality = function(ff, parameters = detect_fl_parameters(ff), crit = 
     sdev = sd(x)
     thresh[i] = mn + sdev
   }
-  names(thresh) = parameters
+  names(unimodal) = colnames(ff)[parameters]
+  names(thresh) = colnames(ff)[parameters]
 
   return(list(unimodal = unimodal, thresh = thresh))
 }
