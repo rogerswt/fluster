@@ -569,8 +569,8 @@ parameter_modality = function(ff, parameters = detect_fl_parameters(ff), crit = 
     sdev = sd(x)
     thresh[i] = mn + sdev
   }
-  names(unimodal) = colnames(ff)[parameters]
-  names(thresh) = colnames(ff)[parameters]
+  names(unimodal) = parameters
+  names(thresh) = parameters
 
   return(list(unimodal = unimodal, thresh = thresh))
 }
