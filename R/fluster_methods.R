@@ -177,11 +177,14 @@ fluster_map_sample = function(ff, fluster_obj) {
 #' @param fluster_obj An object of type "fluster", the result of running fluster()
 #' @param parameters Which parameters to include in the plot (default = all parameters)
 #' @param cluster Which cluster to plot.
+#' @param bin_indices Instead of bin indices in a cluster, specify them directly.
+#' @param mode Use either arithmetic (mean/sd) or robust (median/quarties).
+#' @param plot_global_flag Indicate the global distributions.
 #' @export
 fluster_phenobars = function(fluster_obj,
                              parameters = colnames(fluster_obj$centers),
                              cluster = 1, bin_indices = NULL,
-                             mode = c("robust", "arithmetic"),
+                             mode = c("arithmetic", "robust"),
                              plot_global_flag = FALSE,
                              main = paste("Cluster", cluster)) {
   mode = match.arg(mode)
