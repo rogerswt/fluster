@@ -23,6 +23,7 @@ Imports:
     igraph,
     cluster,
     fields,
+    KernSmooth,
     diptest
 Remotes:
     bioc::release/flowCore,
