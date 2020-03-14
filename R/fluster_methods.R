@@ -21,6 +21,7 @@
 
 #' @importFrom igraph normalize tree parent
 #' @import diptest
+#' @import KernSmooth
 #' @import igraph
 #' @import fields
 #' @import flowFP
