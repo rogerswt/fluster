@@ -91,8 +91,8 @@ suppressMessages(plot_fluster(fluster = fluster_obj))
 ```
 
 
-## Looking at differential expression of clusters - panoply_map_sample()
-Now that we have a panoply model, we can map other samples to it to look for differential expression.  We've created the panoply model on the flowSet consisting of 10 sub-sampled instances from young people (a better idea might be to aggregate young and old samples and create the panoply model from that aggregate).  We'll load up 10 sub-sampled instances from older people, and look for clusters that seem to differ between the two groups.
+## Looking at differential expression of clusters - fluster_map_sample()
+Now that we have a fluster model, we can map other samples to it to look for differential expression.  We've created the fluster model on the flowSet consisting of 10 sub-sampled instances from young people (a better idea might be to aggregate young and old samples and create the fluster model from that aggregate).  We'll load up 10 sub-sampled instances from older people, and look for clusters that seem to differ between the two groups.
 
 ***NOTE: in the interest of keeping example data small-ish, the data here are (a) subsampled, and (b) only 10 instances in each group, so this section isn't likely to find much of anything interesting but is included to illustrate the idea.  We encourage you to download \link{https://flowrepository.org/id/FR-FCM-ZZGS} in its entirety and follow this idea on the full data set. ***
 
