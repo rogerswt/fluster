@@ -514,16 +514,33 @@ merge_categorical_clusters = function(fluster_obj, parameters = colnames(fluster
     cmerge[[k]] = cvec
   }
 
-  cmerge
+  # replace clustering slot with the merged result
+  orig_clustering = fluster_obj$clustering
+  c_index = list()
+  for (i in 1:length(cmerge)) {
+    c_index[[i]] = vector(mode = 'numeric')
+    for (j in 1:length(cmerge[[i]])) {
+      c_index[[i]] = append(c_index[[i]], orig_clustering$c_index[[cmerge[[i]][j]]])
+    }
+  }
+  nbins = 2 ^ nRecursions(fluster_obj$mod)
+  clst = rep(NA, length = nbins)
+  for (i in 1:length(c_index)) {
+    clst[c_index[[i]]] = i
+  }
+  clustering = list(clst = clst, c_index = c_index)
+  fluster_obj$clustering = clustering
+
+  fluster_obj
 }
 
 # use the Hartigan dip-test to estimate modality for each parameter
 # calculate thresholds to be used to determine lo/hi categorization
-parameter_modality = function(ff, params = detect_fl_parameters(ff), crit = .2) {
+parameter_modality = function(ff, parameters = detect_fl_parameters(ff), crit = .2) {
   # down-sample ff due to dip.test limitation
   if (is(ff, "flowSet")) {ff = as(ff, "flowFrame")}
   max_n = 71999
-  if(nrow(ff) > max_n) {ff = Subset(sampleFilter(max_n))}
+  if(nrow(ff) > max_n) {ff = Subset(ff, sampleFilter(max_n))}
 
   pv = vector(mode = 'numeric')
   for (i in 1:length(parameters)) {

@@ -4,7 +4,7 @@
 \alias{fluster}
 \title{fluster}
 \usage{
-fluster(fcs, parameters = NULL, nRecursions = 12, nclust = NULL)
+fluster(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merge = TRUE)
 }
 \arguments{
 \item{fcs}{The data (either a flowFrame or a flowSet)}
@@ -13,7 +13,9 @@ fluster(fcs, parameters = NULL, nRecursions = 12, nclust = NULL)
 
 \item{nRecursions}{The number of recursions in calculating the fingerprint (default = 12)}
 
-\item{nclust}{The number of clusters you want panoply to make.  If NULL, fluster
+\item{nclust}{The number of clusters you want panoply to make.  If NULL, fluster}
+
+\item{merge}{Logical: should we merge initial clusters based on categorical similarity?
 will make a guess as to the "best" number of clusters}
 }
 \value{

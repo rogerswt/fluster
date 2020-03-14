@@ -20,6 +20,7 @@
 
 
 #' @importFrom igraph normalize tree parent
+#' @import diptest
 #' @import igraph
 #' @import fields
 #' @import flowFP
@@ -36,6 +37,7 @@ NULL
 #' @param parameters The parameters in fcs used for analysis
 #' @param nRecursions The number of recursions in calculating the fingerprint (default = 12)
 #' @param nclust The number of clusters you want panoply to make.  If NULL, fluster
+#' @param merge Logical: should we merge initial clusters based on categorical similarity?
 #' will make a guess as to the "best" number of clusters
 #' @description Fluster (**F**ingerprint-based c**luster**ing)
 #'  implements a workflow of doing Cytometric Fingerprint (CF) binning of
@@ -58,7 +60,7 @@ NULL
 #' flust_params = c(7:9, 11:22)
 #' flust_obj = fluster(fs_young, parameters = flust_params)
 #' @export
-fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL) {
+fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merge = TRUE) {
   if (is(fcs, "flowFrame")) {
     ff = fcs
   } else if (is(fcs, "flowSet")) {
@@ -83,9 +85,6 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL) {
   mfi = as.list(data.frame(t(res$center)))
 
   # agnes on bin centers
-  g = build_graph(mfi = mfi)
-  g = add_mfi_vertex_attributes(g, mfi)
-  mst = igraph::mst(g)
   message("clustering bins...")
   mat = t(res$center)
   ag = agnes(mat)
@@ -108,16 +107,30 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL) {
   # determining modality
   modality = parameter_modality(ff)
 
+  fluster_obj = list(mod = mod, centers = mat, graph = NULL, clustering = clst, modality = modality)
+  class(fluster_obj) = "fluster"
+
+  # merging clusters
+  if (merge) {
+    fluster_obj = merge_categorical_clusters(fluster_obj = fluster_obj, parameters = parameters)
+    n_clust = max(fluster_obj$clustering$clst)
+    message("merging clusters, resulting in ", n_clust, " clusters ...")
+
+  }
+
   # set up to plot as a graph
   message("forming a graph representation of clusters...")
-  cag = agnes_to_community(ag, nclust = nclust)
+  g = build_graph(mfi = mfi)
+  g = add_mfi_vertex_attributes(g, mfi)
+  mst = igraph::mst(g)
+  cag = agnes_to_community(ag, nclust = n_clust)   # BUGBUGBUG - not correct with merging
   gcomm = make_graph_from_community(comm = cag, g = mst)
   gcomm = attach_layout_fr(gcomm)
 
-  fluster = list(mod = mod, centers = mat, graph = gcomm, clustering = clst, modality = modality)
-  class(fluster) = "fluster"
+  # add the graph to the fluster object
+  fluster_obj$graph = gcomm
 
-  fluster
+  fluster_obj
 }
 
 #' @title plot_fluster
