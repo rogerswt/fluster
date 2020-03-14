@@ -22,7 +22,8 @@ Imports:
     wadeTools, 
     igraph,
     cluster,
-    fields
+    fields,
+    diptest
 Remotes:
     bioc::release/flowCore,
     bioc::release/flowFP,
