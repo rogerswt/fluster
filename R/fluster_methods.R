@@ -106,7 +106,7 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merg
   clst = list(clst = clusters, c_index = c_index)
 
   # determining modality
-  modality = parameter_modality(ff)
+  modality = parameter_modality(ff, parameters = parameters)
 
   fluster_obj = list(mod = mod, centers = mat, graph = NULL, clustering = clst, modality = modality)
   class(fluster_obj) = "fluster"
