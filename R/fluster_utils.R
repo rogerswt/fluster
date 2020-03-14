@@ -431,5 +431,139 @@ agnes_to_community = function(ag, nclust) {
   comm
 }
 
+# calculate statistics for a collection of bins
+distributions_bins = function(fluster_obj, parameters = colnames(fluster_obj$centers), bin_indices) {
+  centers = fluster_obj$centers
+  idx = bin_indices
+
+  med_vec = vector(mode = 'numeric')
+  q1_vec = vector(mode = 'numeric')
+  q3_vec = vector(mode = 'numeric')
+  mn_vec = lo_vec = hi_vec = vector(mode = 'numeric')
+  for (i in 1:length(parameters)) {
+    tmp = fivenum(centers[idx, i])
+    med_vec[i] = tmp[3]
+    q1_vec[i] = tmp[2]
+    q3_vec[i] = tmp[4]
+    mn_vec[i] = mean(centers[idx, i])
+    sdev = sd(centers[idx, i])
+    lo_vec[i] = mn_vec[i] - 0.5 * sdev
+    hi_vec[i] = mn_vec[i] + 0.5 * sdev
+  }
+  names(med_vec) = names(q1_vec) = names(q3_vec) = parameters
+
+  return(list(med = med_vec, q1 = q1_vec, q3 = q3_vec, mn = mn_vec, lo = lo_vec, hi = hi_vec))
+}
+
+# label a cluster categorically
+# If the median for the cluster is above the parameter threshold, label it hi, otherwise lo
+categorical_phenotype = function(fluster_obj, parameters = colnames(fluster_obj$centers), cluster = 1) {
+  idx = fluster_obj$clustering$c_index[[cluster]]
+  res = distributions_bins(fluster_obj, bin_indices = idx)
+  # label each parameter as either lo or hi
+  p_category = rep("lo", length = length(parameters))
+  names(p_category) = parameters
+  for (i in 1:length(parameters)) {
+    if (res$mn[i] > fluster_obj$modality$thresh[i]) {p_category[i] = "hi"}
+  }
+  p_category = factor(p_category, levels = c("lo", "hi"))
+
+  p_category
+}
+
+compare_categories = function(c1, c2) {
+  n_param = length(c1)
+  if (length(which(c1 == c2)) == n_param) {
+    res = TRUE
+  } else {
+    res = FALSE
+  }
+  res
+}
+
+merge_categorical_clusters = function(fluster_obj, parameters = colnames(fluster_obj$centers)) {
+  # get the categorical mapping
+  n_clust = max(fluster_obj$clustering$clst)
+  categ = list()
+  for (i in 1:n_clust) {
+    categ[[i]] = categorical_phenotype(fluster_obj =fluster_obj, parameters = parameters, cluster = i)
+  }
+
+  # roll through and create clusters of clusters
+  cmerge = list()
+  # cvec is a vector of cluster indices.  When a cluster joins a merge, it's removed from this vector
+  cvec = 1:n_clust
+  k = 1
+
+  while (length(cvec) > 1) {
+    # get the head of the list of remaining clusters
+    ith = cvec[1]
+    cmerge[[k]] = ith                          # add ith to the next merge
+    cvec = cvec[which(cvec != ith)]            # remove it from cvec
+    for (j in 1:length(cvec)) {
+      jth = cvec[j]
+      if (compare_categories(categ[[ith]], categ[[jth]])) {
+        cmerge[[k]] = append(cmerge[[k]], jth)     # add jth cluster to cmerge
+        cvec = cvec[which(cvec != jth)]            # remove jth cluster from cvec
+      }
+    }
+    k = k + 1
+  }
+  # handle the last cluster
+  if (length(cvec) > 0) {
+    cmerge[[k]] = cvec
+  }
+
+  cmerge
+}
+
+# use the Hartigan dip-test to estimate modality for each parameter
+# calculate thresholds to be used to determine lo/hi categorization
+parameter_modality = function(ff, params = detect_fl_parameters(ff), crit = .2) {
+  # down-sample ff due to dip.test limitation
+  if (is(ff, "flowSet")) {ff = as(ff, "flowFrame")}
+  max_n = 71999
+  if(nrow(ff) > max_n) {ff = Subset(sampleFilter(max_n))}
+
+  pv = vector(mode = 'numeric')
+  for (i in 1:length(parameters)) {
+    pv[i] = dip.test(exprs(ff)[, parameters[i]])$p.value
+  }
+
+  names(pv) = parameters
+  unimodal = pv > crit
+  names(unimodal) = parameters
+
+  # calculate hi/lo thresholds, conditioned on modality
+  thresh = vector(mode = 'numeric')
+  # multimodal thresholds
+  for (i in which(!unimodal)) {
+    kde = bkde(exprs(ff)[, parameters[i]])
+    res = find.local.minima(kde)
+    # find the lowest one above bx(1000)
+    thresh[i] = min(res$x)
+    if (length(res$x) > 1) {
+      thresh[i] = min(res$x[which(res$x > bx(1000))])
+    }
+  }
+  # unimodal thresholds defined as greater than mean + 1sd
+  for (i in which(unimodal)) {
+    x = exprs(ff)[, parameters[i]]
+    mn = mean(x)
+    sdev = sd(x)
+    thresh[i] = mn + sdev
+  }
+  names(thresh) = parameters
+
+  return(list(unimodal = unimodal, thresh = thresh))
+}
+
+
+
+
+
+
+
+
 
 

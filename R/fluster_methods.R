@@ -105,13 +105,16 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL) {
   }
   clst = list(clst = clusters, c_index = c_index)
 
+  # determining modality
+  modality = parameter_modality(ff)
+
   # set up to plot as a graph
   message("forming a graph representation of clusters...")
   cag = agnes_to_community(ag, nclust = nclust)
   gcomm = make_graph_from_community(comm = cag, g = mst)
   gcomm = attach_layout_fr(gcomm)
 
-  fluster = list(mod = mod, centers = mat, graph = gcomm, clustering = clst)
+  fluster = list(mod = mod, centers = mat, graph = gcomm, clustering = clst, modality = modality)
   class(fluster) = "fluster"
 
   fluster
@@ -177,8 +180,11 @@ fluster_map_sample = function(ff, fluster_obj) {
 #' @export
 fluster_phenobars = function(fluster_obj,
                              parameters = colnames(fluster_obj$centers),
-                             cluster = 1,
+                             cluster = 1, bin_indices = NULL,
+                             mode = c("robust", "arithmetic"),
+                             plot_global_flag = FALSE,
                              main = paste("Cluster", cluster)) {
+  mode = match.arg(mode)
 
   # make an empty plot
   plot(0, 0, pch = '', xlim = c(0, bx(262143)), ylim = c(1 - .3, length(parameters) + .3),
@@ -191,27 +197,50 @@ fluster_phenobars = function(fluster_obj,
   centers = fluster_obj$centers
 
   # get the bin indices of the cluster
-  idx = which(fluster_obj$clustering$clst == cluster)
-
-  med_vec = vector(mode = 'numeric')
-  q1_vec = vector(mode = 'numeric')
-  q3_vec = vector(mode = 'numeric')
-  for (i in 1:length(parameters)) {
-    tmp = fivenum(centers[idx, i])
-    med_vec[i] = tmp[3]
-    q1_vec[i] = tmp[2]
-    q3_vec[i] = tmp[4]
-  }
-  # draw the median
-  col = pcolor(med_vec, min_value = 0, max_value = 5)
-  add_bars(vals = med_vec, yvals = 1:length(parameters), col = col)
-
-
-  # draw the flags
-  for (i in 1:length(parameters)) {
-    draw_flag(y = i, q1 = q1_vec[i], q3 = q3_vec[i], med = NA, cex = 2, lwd = 2)
-
+  if(is.null(bin_indices)) {
+    idx = which(fluster_obj$clustering$clst == cluster)
+  } else {
+    idx = bin_indices
   }
 
+  val = distributions_bins(fluster_obj, parameters, bin_indices = idx)
+
+  if (mode == "robust") {
+    # draw the median
+    col = pcolor(val$med, min_value = 0, max_value = 5)
+    add_bars(vals = val$med, yvals = 1:length(parameters), col = col)
+
+    # draw the flags
+    for (i in 1:length(parameters)) {
+      draw_flag(y = i, q1 = val$q1[i], q3 = val$q3[i], med = NA, cex = 2, lwd = 2)
+    }
+
+    # add global flags
+    if(plot_global_flag) {
+      n_bins = 2^nRecursions(fluster_obj$mod)
+      qglbl = distributions_bins(fluster_obj, parameters = parameters, bin_indices = 1:n_bins)
+      for (i in 1:length(parameters)) {
+        draw_flag(y = i-.2, q1 = qglbl$q1[i], q3 = qglbl$q3[i], med = qglbl$med[i], cex = 2, lwd = 2, col = 'gray')
+      }
+    }
+  } else {
+    # draw the mean
+    col = pcolor(val$med, min_value = 0, max_value = 5)
+    add_bars(vals = val$mn, yvals = 1:length(parameters), col = col)
+
+    # draw the flags
+    for (i in 1:length(parameters)) {
+      draw_flag(y = i, q1 = val$lo[i], q3 = val$hi[i], med = NA, cex = 2, lwd = 2)
+    }
+
+    # add global flags
+    if(plot_global_flag) {
+      n_bins = 2^nRecursions(fluster_obj$mod)
+      qglbl = distributions_bins(fluster_obj, parameters = parameters, bin_indices = 1:n_bins)
+      for (i in 1:length(parameters)) {
+        draw_flag(y = i-.2, q1 = qglbl$lo[i], q3 = qglbl$hi[i], med = qglbl$mn[i], cex = 2, lwd = 2, col = 'gray')
+      }
+    }
+  }
 }
 
