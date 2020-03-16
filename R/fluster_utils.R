@@ -491,6 +491,7 @@ merge_categorical_clusters = function(fluster_obj, parameters = colnames(fluster
 
   # roll through and create clusters of clusters
   cmerge = list()
+  phenotype = list()
   # cvec is a vector of cluster indices.  When a cluster joins a merge, it's removed from this vector
   cvec = 1:n_clust
   k = 1
@@ -504,6 +505,7 @@ merge_categorical_clusters = function(fluster_obj, parameters = colnames(fluster
       jth = cvec[j]
       if (compare_categories(categ[[ith]], categ[[jth]])) {
         cmerge[[k]] = append(cmerge[[k]], jth)     # add jth cluster to cmerge
+        phenotype[[k]] = categ[[jth]]              # record the phenotype
         cvec = cvec[which(cvec != jth)]            # remove jth cluster from cvec
       }
     }
@@ -528,7 +530,7 @@ merge_categorical_clusters = function(fluster_obj, parameters = colnames(fluster
   for (i in 1:length(c_index)) {
     clst[c_index[[i]]] = i
   }
-  clustering = list(clst = clst, c_index = c_index)
+  clustering = list(clst = clst, c_index = c_index, phenotype = phenotype)
   fluster_obj$clustering = clustering
 
   fluster_obj
