@@ -500,12 +500,12 @@ merge_categorical_clusters = function(fluster_obj, parameters = colnames(fluster
     # get the head of the list of remaining clusters
     ith = cvec[1]
     cmerge[[k]] = ith                          # add ith to the next merge
+    phenotype[[k]] = categ[[ith]]              # record the phenotype
     cvec = cvec[which(cvec != ith)]            # remove it from cvec
     for (j in 1:length(cvec)) {
       jth = cvec[j]
       if (compare_categories(categ[[ith]], categ[[jth]])) {
         cmerge[[k]] = append(cmerge[[k]], jth)     # add jth cluster to cmerge
-        phenotype[[k]] = categ[[jth]]              # record the phenotype
         cvec = cvec[which(cvec != jth)]            # remove jth cluster from cvec
       }
     }
