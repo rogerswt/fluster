@@ -531,7 +531,7 @@ merge_categorical_clusters = function(fluster_obj, parameters = colnames(fluster
   for (i in 1:length(c_index)) {
     clst[c_index[[i]]] = i
   }
-  clustering = list(clst = clst, c_index = c_index, phenotype = phenotype)
+  clustering = list(clst = clst, c_index = c_index, phenotype = phenotype, func_phenotype = NULL)
   fluster_obj$clustering = clustering
 
   fluster_obj
