@@ -514,6 +514,7 @@ merge_categorical_clusters = function(fluster_obj, parameters = colnames(fluster
   # handle the last cluster
   if (length(cvec) > 0) {
     cmerge[[k]] = cvec
+    phenotype[[k]] = categ[[length(categ)]]
   }
 
   # replace clustering slot with the merged result
