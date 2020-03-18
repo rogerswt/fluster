@@ -40,6 +40,7 @@ NULL
 #' @param nclust The number of clusters you want panoply to make.  If NULL, fluster
 #' @param merge Logical: should we merge initial clusters based on categorical similarity?
 #' will make a guess as to the "best" number of clusters
+#' @param graph Logical: should we compute the MST for visualization?
 #' @description Fluster (**F**ingerprint-based c**luster**ing)
 #'  implements a workflow of doing Cytometric Fingerprint (CF) binning of
 #' a flowFrame (or flowSet)
@@ -61,7 +62,7 @@ NULL
 #' flust_params = c(7:9, 11:22)
 #' flust_obj = fluster(fs_young, parameters = flust_params)
 #' @export
-fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merge = TRUE) {
+fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merge = TRUE, graph = TRUE) {
   if (is(fcs, "flowFrame")) {
     ff = fcs
   } else if (is(fcs, "flowSet")) {
@@ -119,15 +120,18 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merg
 
   }
 
-  # set up to plot as a graph
-  message("forming a graph representation of clusters...")
-  g = build_graph(mfi = mfi)
-  g = add_mfi_vertex_attributes(g, mfi)
-  mst = igraph::mst(g)
-  cag = agnes_to_community(ag, nclust = n_clust)   # BUGBUGBUG - not correct with merging
-  gcomm = make_graph_from_community(comm = cag, g = mst)
-  gcomm = attach_layout_fr(gcomm)
-
+  if (graph) {
+    # set up to plot as a graph
+    message("forming a graph representation of clusters...")
+    g = build_graph(mfi = mfi)
+    g = add_mfi_vertex_attributes(g, mfi)
+    mst = igraph::mst(g)
+    cag = agnes_to_community(ag, nclust = n_clust)   # BUGBUGBUG - not correct with merging
+    gcomm = make_graph_from_community(comm = cag, g = mst)
+    gcomm = attach_layout_fr(gcomm)
+  } else {
+    gcomm = NULL
+  }
   # add the graph to the fluster object
   fluster_obj$graph = gcomm
 

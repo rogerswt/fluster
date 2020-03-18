@@ -4,7 +4,14 @@
 \alias{fluster}
 \title{fluster}
 \usage{
-fluster(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merge = TRUE)
+fluster(
+  fcs,
+  parameters = NULL,
+  nRecursions = 12,
+  nclust = NULL,
+  merge = TRUE,
+  graph = TRUE
+)
 }
 \arguments{
 \item{fcs}{The data (either a flowFrame or a flowSet)}
@@ -17,6 +24,8 @@ fluster(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merge = TRUE)
 
 \item{merge}{Logical: should we merge initial clusters based on categorical similarity?
 will make a guess as to the "best" number of clusters}
+
+\item{graph}{Logical: should we compute the MST for visualization?}
 }
 \value{
 An object of class 'fluster', with the following elements:
