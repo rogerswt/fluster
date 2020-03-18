@@ -542,12 +542,14 @@ merge_categorical_clusters = function(fluster_obj, parameters = colnames(fluster
 parameter_modality = function(ff, parameters = detect_fl_parameters(ff), crit = .2) {
   # down-sample ff due to dip.test limitation
   if (is(ff, "flowSet")) {ff = as(ff, "flowFrame")}
-  max_n = 71999
-  if(nrow(ff) > max_n) {ff = Subset(ff, sampleFilter(max_n))}
+  # Next two lines were to avoid a max_n message in dip.test, but sampling
+  # leads to non-deterministic results for cluster merging.
+  # max_n = 71999
+  # if(nrow(ff) > max_n) {ff = Subset(ff, sampleFilter(max_n))}
 
   pv = vector(mode = 'numeric')
   for (i in 1:length(parameters)) {
-    pv[i] = dip.test(exprs(ff)[, parameters[i]])$p.value
+    pv[i] = suppressMessages(dip.test(exprs(ff)[, parameters[i]])$p.value)
   }
 
   names(pv) = parameters
@@ -575,7 +577,7 @@ parameter_modality = function(ff, parameters = detect_fl_parameters(ff), crit = 
   names(unimodal) = parameters
   names(thresh) = parameters
 
-  return(list(unimodal = unimodal, thresh = thresh))
+  return(list(unimodal = unimodal, thresh = thresh, p.value = pv))
 }
 
 
