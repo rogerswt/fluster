@@ -10,7 +10,8 @@ fluster(
   nRecursions = 12,
   nclust = NULL,
   merge = TRUE,
-  graph = TRUE
+  graph = TRUE,
+  tsne = TRUE
 )
 }
 \arguments{

@@ -32,8 +32,7 @@ plot_fluster(
 N/A.
 }
 \description{
-Draw a picture using graph-based representation of clusters of the
-result of fluster.
+Draw a picture of the result of fluster using graph-based representation of clusters.
 }
 \examples{
 plot_fluster(fluster_obj)

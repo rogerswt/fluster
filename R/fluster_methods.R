@@ -62,7 +62,7 @@ NULL
 #' flust_params = c(7:9, 11:22)
 #' flust_obj = fluster(fs_young, parameters = flust_params)
 #' @export
-fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merge = TRUE, graph = TRUE) {
+fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merge = TRUE, graph = TRUE, tsne = TRUE) {
   if (is(fcs, "flowFrame")) {
     ff = fcs
   } else if (is(fcs, "flowSet")) {
@@ -94,7 +94,7 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merg
   # check nclust
   if (is.null(nclust)) {
     nclust = advise_n_clust(ag, show = FALSE)$n1
-    message("advising ", nclust, " clusters")
+    message("advising ", nclust, " clusters...")
   }
 
   clusters = cutree(as.hclust(ag), k = nclust)
@@ -109,26 +109,22 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merg
   # determining modality
   modality = parameter_modality(ff, parameters = parameters)
 
-  fluster_obj = list(mod = mod, centers = mat, graph = NULL, clustering = clst, modality = modality)
+  fluster_obj = list(mod = mod, centers = mat, graph = NULL, tsne = NULL, clustering = clst, modality = modality)
   class(fluster_obj) = "fluster"
 
   # merging clusters
   if (merge) {
     fluster_obj = merge_categorical_clusters(fluster_obj = fluster_obj, parameters = parameters)
     n_clust = max(fluster_obj$clustering$clst)
-    message("merging clusters, resulting in ", n_clust, " clusters ...")
+    message("merging clusters, resulting in ", n_clust, " clusters...")
 
   }
 
   if (graph) {
     # set up to plot as a graph
-    message("forming a graph representation of clusters...")
-    g = build_graph(mfi = mfi)
-    g = add_mfi_vertex_attributes(g, mfi)
-    mst = igraph::mst(g)
-    cag = agnes_to_community(ag, nclust = n_clust)   # BUGBUGBUG - not correct with merging
-    gcomm = make_graph_from_community(comm = cag, g = mst)
-    gcomm = attach_layout_fr(gcomm)
+    message("building a MST representation of clusters...")
+    fluster_obj = add_mst(fluster_obj)
+
   } else {
     gcomm = NULL
   }
@@ -138,9 +134,26 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merg
   fluster_obj
 }
 
+#' @title Add a minimum spanning tree representation to the fluster object
+#' @description Add a minimum spanning tree representation to the fluster object
+#' #param fluster_obj The result of running fluster()
+#' @return A fluster object with the graph slot populated.
+#' @export
+fluster_add_mst = function(fluster_obj) {
+  mfi = as.list(data.frame(fluster_obj$centers))
+  g = build_graph(mfi = mfi)
+  g = add_mfi_vertex_attributes(g, mfi)
+  mst = igraph::mst(g)
+  cag = agnes_to_community(ag, nclust = n_clust)   # BUGBUGBUG - not correct with merging
+  gcomm = make_graph_from_community(comm = cag, g = mst)
+  gcomm = attach_layout_fr(gcomm)
+  fluster_obj$graph = gcomm
+
+  fluster_obj
+}
+
 #' @title plot_fluster
-#' @description Draw a picture using graph-based representation of clusters of the
-#' result of fluster.
+#' @description Draw a picture of the result of fluster using graph-based representation of clusters.
 #' @param fluster The result of running fluster
 #' @param vs The max size of nodes in the graph
 #' @param ms The minimum size of nodes in the graph
