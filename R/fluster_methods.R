@@ -105,7 +105,7 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merg
     idx = which(clusters == i)
     c_index[[i]] = idx
   }
-  clst = list(clst = clusters, c_index = c_index)
+  clst = list(clst = clusters, c_index = c_index, c_centers = NULL)
 
   # determining modality
   modality = parameter_modality(ff, parameters = parameters)
@@ -116,10 +116,19 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merg
   # merging clusters
   if (merge) {
     fluster_obj = merge_categorical_clusters(fluster_obj = fluster_obj, parameters = parameters)
-    n_clust = max(fluster_obj$clustering$clst)
-    message("merging clusters, resulting in ", n_clust, " clusters...")
+    nclust = max(fluster_obj$clustering$clst)
+    message("merging clusters, resulting in ", nclust, " clusters...")
 
   }
+
+  # calculate cluster centers, mostly for visualization
+  c_centers = matrix (NA, nrow = 0, ncol = length(parameters))
+  colnames(c_centers) = parameters
+  for (i in 1:nclust) {
+    idx = which(fluster_obj$clustering$clst == i)
+    c_centers = rbind(c_centers, distributions_bins(fluster_obj, parameters, bin_indices = idx)$med)
+  }
+  fluster_obj$clustering$c_centers = c_centers
 
   if (graph) {
     # set up to plot as a graph
@@ -146,6 +155,7 @@ fluster_add_mst = function(fluster_obj) {
   g = add_mfi_vertex_attributes(g, mfi)
   mst = igraph::mst(g)
   ag = fluster_obj$agnes_obj
+  n_clust = length(fluster_obj$clustering$c_index)
   cag = agnes_to_community(ag, nclust = n_clust)   # BUGBUGBUG - not correct with merging
   gcomm = make_graph_from_community(comm = cag, g = mst)
   gcomm = attach_layout_fr(gcomm)
@@ -160,8 +170,9 @@ fluster_add_mst = function(fluster_obj) {
 #' @return A fluster object with the tsne slot populated.
 #' @export
 fluster_add_tsne = function(fluster_obj) {
-  perplexity = 30
-  centers = fluster_obj$centers
+  centers = fluster_obj$clustering$c_centers
+  n_items = nrow(centers)
+  perplexity = min((n_items - 1) / 3, 30)
   set.seed(137)   # so we'll get the same map for the same data
   res = Rtsne(dist(centers), perplexity = perplexity)$Y
   colnames(res) = c("tsne_1", "tsne_2")

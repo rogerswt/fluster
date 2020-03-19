@@ -172,7 +172,7 @@ make_graph_from_community = function(comm, g) {
   for (i in 1:(n_vertices - 1)) {
     for (j in (i + 1):n_vertices) {
       res = edges_between_communities(comm, g, indices[[i]], indices[[j]])
-      if(res$strength != 0) {
+      if (res$strength != 0) {
         # add an edge
         gcomm = add_edges(gcomm, c(i, j))
         E(gcomm)$strength[k] = res$strength
@@ -275,7 +275,7 @@ plot_comm_spread = function(g, markers = NULL, vs = 3, ms = 1, log.size = TRUE, 
   n = length(markers) + 1
   sq = sqrt(n)
   frac = sq - floor(sq)
-  if(frac == 0) {
+  if (frac == 0) {
     ac = dn = floor(sq)
   } else {
     ac = floor(sq) + 1
@@ -288,6 +288,29 @@ plot_comm_spread = function(g, markers = NULL, vs = 3, ms = 1, log.size = TRUE, 
     plot_community_graph(g, marker, vs = vs, ms = ms, log.size = log.size, vertex.frame = vertex.frame, cex.main)
   }
 }
+
+plot_tsne = function(fluster_obj, marker, mode = c("arithmetic", "robust"), cex = 1.0, emph = TRUE) {
+  if (is.null(fluster_obj$tsne)) {
+    stop("You must first compute the tSNE embedding using fluster_add_tsne")
+  }
+  mode = match.arg(mode)
+  centers = fluster_obj$centers
+  n_clust = length(fluster_obj$clustering$c_index)
+  cols = pcolor(fluster_obj$clustering$c_centers[, marker])
+
+  map = fluster_obj$tsne
+  if (emph) {
+    plot(map, bty = 'n', xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', cex = cex)
+    points(map, pch = 20, col = cols, cex = cex)
+  } else {
+    plot(map, bty = 'n', xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', pch = 20, col = cols, cex = cex)
+  }
+
+}
+
+# plot_tsne_spread = function(fluster_obj, markers = NULL) {
+#
+# }
 
 ################################################################################
 ################################################################################
@@ -441,12 +464,12 @@ distributions_bins = function(fluster_obj, parameters = colnames(fluster_obj$cen
   q3_vec = vector(mode = 'numeric')
   mn_vec = lo_vec = hi_vec = vector(mode = 'numeric')
   for (i in 1:length(parameters)) {
-    tmp = fivenum(centers[idx, i])
+    tmp = fivenum(centers[idx,parameters[i]])
     med_vec[i] = tmp[3]
     q1_vec[i] = tmp[2]
     q3_vec[i] = tmp[4]
-    mn_vec[i] = mean(centers[idx, i])
-    sdev = sd(centers[idx, i])
+    mn_vec[i] = mean(centers[idx,parameters[i]])
+    sdev = sd(centers[idx,parameters[i]])
     lo_vec[i] = mn_vec[i] - 0.5 * sdev
     hi_vec[i] = mn_vec[i] + 0.5 * sdev
   }
@@ -486,7 +509,7 @@ merge_categorical_clusters = function(fluster_obj, parameters = colnames(fluster
   n_clust = max(fluster_obj$clustering$clst)
   categ = list()
   for (i in 1:n_clust) {
-    categ[[i]] = categorical_phenotype(fluster_obj =fluster_obj, parameters = parameters, cluster = i)
+    categ[[i]] = categorical_phenotype(fluster_obj = fluster_obj, parameters = parameters, cluster = i)
   }
 
   # roll through and create clusters of clusters
@@ -579,13 +602,3 @@ parameter_modality = function(ff, parameters = detect_fl_parameters(ff), crit = 
 
   return(list(unimodal = unimodal, thresh = thresh, p.value = pv))
 }
-
-
-
-
-
-
-
-
-
-
