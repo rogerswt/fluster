@@ -182,7 +182,7 @@ fluster_add_tsne = function(fluster_obj) {
 }
 
 
-#' @title plot_fluster
+#' @title plot_fluster_graph
 #' @description Draw a picture of the result of fluster using graph-based representation of clusters.
 #' @param fluster The result of running fluster
 #' @param vs The max size of nodes in the graph
@@ -194,10 +194,30 @@ fluster_add_tsne = function(fluster_obj) {
 #' @examples
 #' plot_fluster(fluster_obj)
 #' @export
-plot_fluster = function(fluster, markers = colnames(fluster$mat), vs = 10, ms = 5, log.size = FALSE, vertex.frame = TRUE, cex.main = 2, cex.lab = 2) {
+plot_fluster_graph = function(fluster, markers = colnames(fluster$mat), vs = 10, ms = 5, log.size = FALSE, vertex.frame = TRUE, cex.main = 2, cex.lab = 2) {
   plot_comm_spread(fluster$graph, markers = colnames(fluster$mat), vs = vs, ms = ms,
                    log.size = log.size, vertex.frame = vertex.frame, cex.main = cex.main)
   draw_color_scale(cex.lab = cex.lab)
+}
+
+#' @title plot_fluster_tsne
+#' @description Draw a picture of the result of fluster using tsne representation of clusters.
+#' @param fluster The result of running fluster
+#' @param markers Markers to include in the spread
+#' @param mode Compute colors using either arithmetic or robust average
+#' @param cex Scale factor for node size
+#' @param proportional Logical.  Scale by the number of events in the cluster
+#' @param emph Logical.  Emphasize each blob with a black line.
+#' @param cex.main Scale factor for titles of the individual markers
+#' @return N/A.
+#' @examples
+#' plot_fluster(fluster_obj)
+#' @export
+plot_fluster_tsne = function(fluster, markers = NULL, mode = c("arithmetic", "robust"), cex = 50.0, proportional = TRUE, emph = TRUE, cex.lab = 2) {
+  plot_tsne_spread(fluster, markers, mode, cex, proportional, emph)
+  if (markers != 'categorical') {
+    draw_color_scale(cex.lab = cex.lab)
+  }
 }
 
 #' @title Map a Sample to a Fluster Model

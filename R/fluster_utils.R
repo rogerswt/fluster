@@ -289,28 +289,68 @@ plot_comm_spread = function(g, markers = NULL, vs = 3, ms = 1, log.size = TRUE, 
   }
 }
 
-plot_tsne = function(fluster_obj, marker, mode = c("arithmetic", "robust"), cex = 1.0, emph = TRUE) {
+plot_tsne = function(fluster_obj, marker, mode = c("arithmetic", "robust"), box = TRUE, cex = 50.0, proportional = TRUE, emph = TRUE) {
   if (is.null(fluster_obj$tsne)) {
     stop("You must first compute the tSNE embedding using fluster_add_tsne")
   }
   mode = match.arg(mode)
   centers = fluster_obj$centers
   n_clust = length(fluster_obj$clustering$c_index)
-  cols = pcolor(fluster_obj$clustering$c_centers[, marker])
-
-  map = fluster_obj$tsne
-  if (emph) {
-    plot(map, bty = 'n', xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', cex = cex)
-    points(map, pch = 20, col = cols, cex = cex)
+  if (marker == "categorical") {
+    cols = fluster_obj$clustering$func_color
   } else {
-    plot(map, bty = 'n', xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', pch = 20, col = cols, cex = cex)
+    cols = pcolor(fluster_obj$clustering$c_centers[, marker], min_value = 0.0, max_value = 5.0)
   }
 
+  map = fluster_obj$tsne
+  if (proportional) {
+    size = vector('numeric')
+    for (i in 1:n_clust) {
+      size[i] = length(fluster_obj$clustering$c_index[[i]])
+    }
+    size = sqrt(size / (2 ^ nRecursions(fluster_obj$mod)))
+    cex = cex * size
+  }
+
+  # plot largest first
+  srt = sort(size, decreasing = TRUE, index.return = TRUE)$ix
+  map = map[srt, ]
+  cols = cols[srt]
+  cex = cex[srt]
+
+  bty = ifelse (box, 'o', 'n')
+  if (emph) {
+    xlim = c(min(map[, 1]), max(map[, 1]))
+    ylim = c(min(map[, 2]), max(map[, 2]))
+    plot(0, 0, pch = '', , bty = bty, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', xlim = xlim, ylim = ylim, main = marker)
+    for (i in 1:nrow(map)) {
+      points(x = map[i, 1], y = map[i, 2], pch = 20, col = 'black', cex = 1.05 * cex[i])
+      points(x = map[i, 1], y = map[i, 2], pch = 20, col = cols[i], cex = cex[i])
+    }
+  } else {
+    plot(map, bty = bty, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', pch = 20, col = cols, cex = cex, main = marker)
+  }
 }
 
-# plot_tsne_spread = function(fluster_obj, markers = NULL) {
-#
-# }
+plot_tsne_spread = function(fluster_obj, markers = NULL, mode = c("arithmetic", "robust"), cex = 50.0, proportional = TRUE, emph = TRUE) {
+  mode = match.arg(mode)
+
+  # calculate plot layout
+  n = length(markers) + 1
+  sq = sqrt(n)
+  frac = sq - floor(sq)
+  if (frac == 0) {
+    ac = dn = floor(sq)
+  } else {
+    ac = floor(sq) + 1
+    dn = ceiling(n / ac)
+  }
+
+  par(mfrow = c(dn, ac), mar = c(1, 1, 2, 1))
+  for (i in 1:length(markers)) {
+    plot_tsne(fluster_obj = fluster_obj, marker = markers[i], mode = mode, cex = cex, proportional = proportional, emph = emph)
+  }
+}
 
 ################################################################################
 ################################################################################
@@ -602,3 +642,60 @@ parameter_modality = function(ff, parameters = detect_fl_parameters(ff), crit = 
 
   return(list(unimodal = unimodal, thresh = thresh, p.value = pv))
 }
+
+# Use a spreadsheet to define functional phenotypes.
+# Rows are functional phenotypes (for example, CD4_EM)
+# columns are markers (e.g. CD4, CD8, CD3, ...)
+# Entries are either 'lo', 'hi', or 'dc' (indicating don't care)
+# rownames will define the subset names
+# colnames MUST match the marker labeling in the data set
+# optional column labeled "Colors" will contain color coding of subsets
+retrieve_categorical_definitions = function(file) {
+  tab = read.csv(file, row.names = 1, as.is = TRUE)
+
+  # now turn the columns into properly ordered factors
+    idx = which(tolower(colnames(tab)) != "color")
+    icol = (1:ncol(tab))[-idx]
+    for (i in idx) {
+      tab[, i] = factor(tab[, i], levels = c("lo", "hi", "dc"))
+      if (length(icol) == 1) {
+        colors = tab[, icol]
+      } else {
+        colors = rep(NA, nrow(tab))
+      }
+    }
+  return(list(defs = tab[, idx], colors = colors))
+}
+
+assign_functional_names = function(fluster_obj, functional_definitions) {
+  fd = functional_definitions$defs
+  fc = functional_definitions$colors
+  n_clust = length(fluster_obj$clustering$c_index)
+  func_phenotype = rep('unassigned', length = n_clust)
+  func_color = rep("gray", length = n_clust)
+  pheno = fluster_obj$clustering$phenotype
+  for (i in 1:n_clust) {
+    for (j in 1:nrow(functional_definitions)) {
+      idx = which(fd[i, ] != "dc")
+      cmarkers = colnames(fd)[idx]
+      def = fd[i, idx]
+      # extract values for cluster
+      ctype = pheno[[i]][cmarkers]
+      if (length(which(ctype == def)) == length(idx)) {
+        func_phenotype[i] = rownames(fd)[j]
+        func_color[i] = fc[j]
+        break
+      }
+    }
+  }
+
+  # tack onto fluster_obj
+  fluster_obj$clustering$func_phenotype = func_phenotype
+  fluster_obj$clustering$func_color = func_color
+
+  fluster_obj
+}
+
+
+
+
