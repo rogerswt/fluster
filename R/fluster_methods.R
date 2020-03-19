@@ -220,6 +220,18 @@ plot_fluster_tsne = function(fluster, markers = NULL, mode = c("arithmetic", "ro
   }
 }
 
+#' title map_functional_names
+#' @description Based on a user-specified table, assign symbolic names to clusters
+#' @param fluster_obj The result of running fluster()
+#' @param defs_file A file containing the functional definitions.
+#' @return A decorated fluster object
+#' @export
+map_functional_names = function(fluster_obj, defs_file) {
+  fd = retrieve_categorical_definitions(defs_file)
+  fluster_obj = assign_functional_names(fluster_obj, fd)
+
+}
+
 #' @title Map a Sample to a Fluster Model
 #' @description This function determines, for a single sample, the number of cells in each cluster.
 #' @param ff A sample flowFrame
