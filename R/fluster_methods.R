@@ -110,7 +110,7 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merg
   # determining modality
   modality = parameter_modality(ff, parameters = parameters)
 
-  fluster_obj = list(mod = mod, centers = mat, graph = NULL, tsne = NULL, clustering = clst, modality = modality)
+  fluster_obj = list(mod = mod, centers = mat, agnes_obj = ag, graph = NULL, tsne = NULL, clustering = clst, modality = modality)
   class(fluster_obj) = "fluster"
 
   # merging clusters
@@ -145,6 +145,7 @@ fluster_add_mst = function(fluster_obj) {
   g = build_graph(mfi = mfi)
   g = add_mfi_vertex_attributes(g, mfi)
   mst = igraph::mst(g)
+  ag = fluster_obj$agnes_obj
   cag = agnes_to_community(ag, nclust = n_clust)   # BUGBUGBUG - not correct with merging
   gcomm = make_graph_from_community(comm = cag, g = mst)
   gcomm = attach_layout_fr(gcomm)
