@@ -24,7 +24,8 @@ Imports:
     cluster,
     fields,
     KernSmooth,
-    diptest
+    diptest,
+    Rtsne
 Remotes:
     bioc::release/flowCore,
     bioc::release/flowFP,

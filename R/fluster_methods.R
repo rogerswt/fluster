@@ -20,6 +20,7 @@
 
 
 #' @importFrom igraph normalize tree parent
+#' @import Rtsne
 #' @import diptest
 #' @import KernSmooth
 #' @import igraph
@@ -123,13 +124,13 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merg
   if (graph) {
     # set up to plot as a graph
     message("building a MST representation of clusters...")
-    fluster_obj = add_mst(fluster_obj)
-
-  } else {
-    gcomm = NULL
+    fluster_obj = fluster_add_mst(fluster_obj)
   }
-  # add the graph to the fluster object
-  fluster_obj$graph = gcomm
+
+  if (tsne) {
+    message("builing a tSNE representation of clusters...")
+    fluster_obj = fluster_add_tsne(fluster_obj)
+  }
 
   fluster_obj
 }
@@ -151,6 +152,23 @@ fluster_add_mst = function(fluster_obj) {
 
   fluster_obj
 }
+
+#' @title Add a tSNE representation to the fluster object
+#' @description Add a tSNE representation to the fluster object
+#' #param fluster_obj The result of running fluster()
+#' @return A fluster object with the tsne slot populated.
+#' @export
+fluster_add_tsne = function(fluster_obj) {
+  perplexity = 30
+  centers = fluster_obj$centers
+  set.seed(137)   # so we'll get the same map for the same data
+  res = Rtsne(dist(centers), perplexity = perplexity)$Y
+  colnames(res) = c("tsne_1", "tsne_2")
+  fluster_obj$tsne = res
+
+  fluster_obj
+}
+
 
 #' @title plot_fluster
 #' @description Draw a picture of the result of fluster using graph-based representation of clusters.
