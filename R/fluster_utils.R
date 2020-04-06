@@ -71,6 +71,26 @@ draw_color_scale = function(min_col_value = 0, max_col_value = 5, ...) {
   par(opar)
 }
 
+# draw legend for categorical labeling
+draw_cluster_legend = function(fluster_obj, cex.text = 1.25) {
+  opar = par(mar = c(.1, .1, .1, .1))
+  plot(0, 0, pch = '', xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', xlim = c(0, 1), ylim = c(0, 1), bty = 'n')
+  xcol = 0.05
+  wcol = .1
+  xtext = 0.18
+  subsets = rownames(fluster_obj$labels$definitions)
+  cols = fluster_obj$labels$colors
+
+  n_items = length(subsets)
+  y = seq(.05, .95, length.out = n_items)
+  ht = .8 * .5 / n_items
+  for (i in 1:n_items) {
+    rect(xleft = xcol, ybottom = y[i] - ht, xright = xcol + wcol, ytop = y[i] + ht, col = cols[i])
+    text(x = xtext, y = y[i], labels = subsets[i], pos = 4, cex = cex.text)
+  }
+  par(opar)
+}
+
 # define a color function to transform a parameter value
 pcolor = function(pvalue, min_value = 0, max_value = 4) {
   top_col = 'red'
@@ -289,7 +309,9 @@ plot_comm_spread = function(g, markers = NULL, vs = 3, ms = 1, log.size = TRUE, 
   }
 }
 
-plot_tsne = function(fluster_obj, marker, mode = c("arithmetic", "robust"), box = TRUE, cex = 50.0, proportional = TRUE, emph = TRUE) {
+plot_tsne = function(fluster_obj, marker, mode = c("arithmetic", "robust"),
+                     box = TRUE, cex = 50.0, proportional = TRUE, emph = TRUE,
+                     highlight_clusters = NULL) {
   if (is.null(fluster_obj$tsne)) {
     stop("You must first compute the tSNE embedding using fluster_add_tsne")
   }
@@ -310,6 +332,15 @@ plot_tsne = function(fluster_obj, marker, mode = c("arithmetic", "robust"), box 
     }
     size = sqrt(size / (2 ^ nRecursions(fluster_obj$mod)))
     cex = cex * size
+    cexbg = 1.05 * cex
+  }
+
+  if (!is.null(highlight_clusters)) {
+    hcol = rep('black', length = n_clust)
+    hcol[highlight_clusters] = 'magenta'
+    cexbg[highlight_clusters] = 2.0 * cexbg[highlight_clusters]
+  } else {
+    hcol = rep('black', length = n_clust)
   }
 
   # plot largest first
@@ -317,14 +348,16 @@ plot_tsne = function(fluster_obj, marker, mode = c("arithmetic", "robust"), box 
   map = map[srt, ]
   cols = cols[srt]
   cex = cex[srt]
+  cexbg = cexbg[srt]
+  hcol = hcol[srt]
 
-  bty = ifelse (box, 'o', 'n')
+  bty = ifelse(box, 'o', 'n')
   if (emph) {
     xlim = c(min(map[, 1]), max(map[, 1]))
     ylim = c(min(map[, 2]), max(map[, 2]))
     plot(0, 0, pch = '', , bty = bty, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', xlim = xlim, ylim = ylim, main = marker)
     for (i in 1:nrow(map)) {
-      points(x = map[i, 1], y = map[i, 2], pch = 20, col = 'black', cex = 1.05 * cex[i])
+      points(x = map[i, 1], y = map[i, 2], pch = 20, col = hcol[i], cex = cexbg[i])
       points(x = map[i, 1], y = map[i, 2], pch = 20, col = cols[i], cex = cex[i])
     }
   } else {
@@ -332,7 +365,7 @@ plot_tsne = function(fluster_obj, marker, mode = c("arithmetic", "robust"), box 
   }
 }
 
-plot_tsne_spread = function(fluster_obj, markers = NULL, mode = c("arithmetic", "robust"), cex = 50.0, proportional = TRUE, emph = TRUE) {
+plot_tsne_spread = function(fluster_obj, markers = NULL, mode = c("arithmetic", "robust"), cex = 50.0, proportional = TRUE, emph = TRUE, highlight_clusters) {
   mode = match.arg(mode)
 
   # calculate plot layout
@@ -348,7 +381,7 @@ plot_tsne_spread = function(fluster_obj, markers = NULL, mode = c("arithmetic", 
 
   par(mfrow = c(dn, ac), mar = c(1, 1, 2, 1))
   for (i in 1:length(markers)) {
-    plot_tsne(fluster_obj = fluster_obj, marker = markers[i], mode = mode, cex = cex, proportional = proportional, emph = emph)
+    plot_tsne(fluster_obj = fluster_obj, marker = markers[i], mode = mode, cex = cex, proportional = proportional, emph = emph, highlight_clusters = highlight_clusters)
   }
 }
 
@@ -577,7 +610,7 @@ merge_categorical_clusters = function(fluster_obj, parameters = colnames(fluster
   # handle the last cluster
   if (length(cvec) > 0) {
     cmerge[[k]] = cvec
-    phenotype[[k]] = categ[[length(categ)]]
+    phenotype[[k]] = categ[[length(cvec)]]
   }
 
   # replace clustering slot with the merged result
@@ -654,33 +687,38 @@ retrieve_categorical_definitions = function(file) {
   tab = read.csv(file, row.names = 1, as.is = TRUE)
 
   # now turn the columns into properly ordered factors
-    idx = which(tolower(colnames(tab)) != "color")
-    icol = (1:ncol(tab))[-idx]
-    for (i in idx) {
-      tab[, i] = factor(tab[, i], levels = c("lo", "hi", "dc"))
-      if (length(icol) == 1) {
-        colors = tab[, icol]
-      } else {
-        colors = rep(NA, nrow(tab))
-      }
-    }
+  idx = which(tolower(colnames(tab)) != "color")
+  icol = (1:ncol(tab))[-idx]
+  # for (i in idx) {
+  #   tab[, i] = factor(tab[, i], levels = c("lo", "hi", "dc"))
+  if (length(icol) == 1) {
+    colors = tab[, icol]
+  } else {
+    colors = rep(NA, nrow(tab))
+  }
+  # }
+
   return(list(defs = tab[, idx], colors = colors))
 }
 
 assign_functional_names = function(fluster_obj, functional_definitions) {
-  fd = functional_definitions$defs
+  fd = as.matrix(functional_definitions$defs)
   fc = functional_definitions$colors
+  # add to the fluster object
+  fluster_obj$labels$definitions = fd
+  fluster_obj$labels$colors = fc
+
   n_clust = length(fluster_obj$clustering$c_index)
   func_phenotype = rep('unassigned', length = n_clust)
-  func_color = rep("gray", length = n_clust)
+  func_color = rep("black", length = n_clust)
   pheno = fluster_obj$clustering$phenotype
   for (i in 1:n_clust) {
-    for (j in 1:nrow(functional_definitions)) {
-      idx = which(fd[i, ] != "dc")
+    for (j in 1:nrow(fd)) {
+      idx = which(fd[j, ] != "dc")
       cmarkers = colnames(fd)[idx]
-      def = fd[i, idx]
+      def = fd[j, idx]
       # extract values for cluster
-      ctype = pheno[[i]][cmarkers]
+      ctype = as.character(pheno[[i]][cmarkers])
       if (length(which(ctype == def)) == length(idx)) {
         func_phenotype[i] = rownames(fd)[j]
         func_color[i] = fc[j]

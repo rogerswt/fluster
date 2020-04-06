@@ -213,10 +213,14 @@ plot_fluster_graph = function(fluster, markers = colnames(fluster$mat), vs = 10,
 #' @examples
 #' plot_fluster(fluster_obj)
 #' @export
-plot_fluster_tsne = function(fluster, markers = NULL, mode = c("arithmetic", "robust"), cex = 50.0, proportional = TRUE, emph = TRUE, cex.lab = 2) {
-  plot_tsne_spread(fluster, markers, mode, cex, proportional, emph)
+plot_fluster_tsne = function(fluster, markers = NULL, mode = c("arithmetic", "robust"),
+                             cex = 50.0, proportional = TRUE, emph = TRUE, cex.lab = 2,
+                             highlight_clusters = NULL) {
+  plot_tsne_spread(fluster, markers, mode, cex, proportional, emph, highlight_clusters)
   if (markers != 'categorical') {
     draw_color_scale(cex.lab = cex.lab)
+  } else {
+    draw_cluster_legend(fluster_obj = fluster, cex.text = cex.lab)
   }
 }
 
