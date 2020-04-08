@@ -208,19 +208,23 @@ plot_fluster_graph = function(fluster, markers = colnames(fluster$mat), vs = 10,
 #' @param cex Scale factor for node size
 #' @param proportional Logical.  Scale by the number of events in the cluster
 #' @param emph Logical.  Emphasize each blob with a black line.
-#' @param cex.main Scale factor for titles of the individual markers
+#' @param cex.lab Scale factor for titles of the individual markers
+#' @param highlight_clusters IF not NULL, a collection of cluster indices to highlight.
+#' @param legend Logical.  Whether or not to draw a legend.
 #' @return N/A.
 #' @examples
 #' plot_fluster(fluster_obj)
 #' @export
 plot_fluster_tsne = function(fluster, markers = NULL, mode = c("arithmetic", "robust"),
                              cex = 50.0, proportional = TRUE, emph = TRUE, cex.lab = 2,
-                             highlight_clusters = NULL) {
+                             highlight_clusters = NULL, legend = TRUE) {
   plot_tsne_spread(fluster, markers, mode, cex, proportional, emph, highlight_clusters)
-  if (markers != 'categorical') {
-    draw_color_scale(cex.lab = cex.lab)
-  } else {
-    draw_cluster_legend(fluster_obj = fluster, cex.text = cex.lab)
+  if (legend) {
+    if (markers[1] != 'categorical') {
+      draw_color_scale(cex.lab = cex.lab)
+    } else {
+      draw_cluster_legend(fluster_obj = fluster, cex.text = cex.lab)
+    }
   }
 }
 

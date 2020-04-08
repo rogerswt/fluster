@@ -11,7 +11,9 @@ plot_fluster_tsne(
   cex = 50,
   proportional = TRUE,
   emph = TRUE,
-  cex.lab = 2
+  cex.lab = 2,
+  highlight_clusters = NULL,
+  legend = TRUE
 )
 }
 \arguments{
@@ -27,7 +29,11 @@ plot_fluster_tsne(
 
 \item{emph}{Logical.  Emphasize each blob with a black line.}
 
-\item{cex.main}{Scale factor for titles of the individual markers}
+\item{cex.lab}{Scale factor for titles of the individual markers}
+
+\item{highlight_clusters}{IF not NULL, a collection of cluster indices to highlight.}
+
+\item{legend}{Logical.  Whether or not to draw a legend.}
 }
 \value{
 N/A.
