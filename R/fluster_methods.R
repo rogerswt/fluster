@@ -194,7 +194,7 @@ fluster_add_tsne = function(fluster_obj) {
 #' @examples
 #' plot_fluster(fluster_obj)
 #' @export
-plot_fluster_graph = function(fluster, markers = colnames(fluster$mat), vs = 10, ms = 5, log.size = FALSE, vertex.frame = TRUE, cex.main = 2, cex.lab = 2) {
+plot_fluster_graph = function(fluster, markers = colnames(fluster$centers), vs = 10, ms = 5, log.size = FALSE, vertex.frame = TRUE, cex.main = 2, cex.lab = 2) {
   plot_comm_spread(fluster$graph, markers = colnames(fluster$mat), vs = vs, ms = ms,
                    log.size = log.size, vertex.frame = vertex.frame, cex.main = cex.main)
   draw_color_scale(cex.lab = cex.lab)
@@ -215,10 +215,10 @@ plot_fluster_graph = function(fluster, markers = colnames(fluster$mat), vs = 10,
 #' @examples
 #' plot_fluster(fluster_obj)
 #' @export
-plot_fluster_tsne = function(fluster, markers = NULL, mode = c("arithmetic", "robust"),
-                             cex = 50.0, proportional = TRUE, emph = TRUE, cex.lab = 2,
-                             highlight_clusters = NULL, legend = TRUE) {
-  plot_tsne_spread(fluster, markers, mode, cex, proportional, emph, highlight_clusters)
+plot_fluster_tsne = function(fluster, markers = colnames(fluster$centers), mode = c("arithmetic", "robust"),
+                             cex = 20.0, proportional = TRUE, emph = TRUE, cex.lab = 2,
+                             highlight_clusters = NULL, legend = TRUE, show_cluster_numbers = NULL) {
+  plot_tsne_spread(fluster, markers, mode, cex, proportional, emph, highlight_clusters, show_cluster_numbers)
   if (legend) {
     if (markers[1] != 'categorical') {
       draw_color_scale(cex.lab = cex.lab)

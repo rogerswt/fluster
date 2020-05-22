@@ -311,7 +311,7 @@ plot_comm_spread = function(g, markers = NULL, vs = 3, ms = 1, log.size = TRUE, 
 
 plot_tsne = function(fluster_obj, marker, mode = c("arithmetic", "robust"),
                      box = TRUE, cex = 50.0, proportional = TRUE, emph = TRUE,
-                     highlight_clusters = NULL) {
+                     highlight_clusters = NULL, show_cluster_number = NULL) {
   if (is.null(fluster_obj$tsne)) {
     stop("You must first compute the tSNE embedding using fluster_add_tsne")
   }
@@ -325,15 +325,16 @@ plot_tsne = function(fluster_obj, marker, mode = c("arithmetic", "robust"),
   }
 
   map = fluster_obj$tsne
+  size = rep(cex, n_clust)
   if (proportional) {
-    size = vector('numeric')
     for (i in 1:n_clust) {
       size[i] = length(fluster_obj$clustering$c_index[[i]])
     }
     size = sqrt(size / (2 ^ nRecursions(fluster_obj$mod)))
-    cex = cex * size
-    cexbg = 1.05 * cex
   }
+  cex = cex * size
+  cexbg = 1.05 * cex
+
 
   if (!is.null(highlight_clusters)) {
     hcol = rep('black', length = n_clust)
@@ -359,13 +360,16 @@ plot_tsne = function(fluster_obj, marker, mode = c("arithmetic", "robust"),
     for (i in 1:nrow(map)) {
       points(x = map[i, 1], y = map[i, 2], pch = 20, col = hcol[i], cex = cexbg[i])
       points(x = map[i, 1], y = map[i, 2], pch = 20, col = cols[i], cex = cex[i])
+      if (!is.null(show_cluster_number)) {
+        text(x = map[i, 1], y = map[i, 2], labels = srt[i], adj = 0.5, cex = show_cluster_number)
+      }
     }
   } else {
     plot(map, bty = bty, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', pch = 20, col = cols, cex = cex, main = marker)
   }
 }
 
-plot_tsne_spread = function(fluster_obj, markers = NULL, mode = c("arithmetic", "robust"), cex = 50.0, proportional = TRUE, emph = TRUE, highlight_clusters) {
+plot_tsne_spread = function(fluster_obj, markers = NULL, mode = c("arithmetic", "robust"), cex = 50.0, proportional = TRUE, emph = TRUE, highlight_clusters, show_cluster_number) {
   mode = match.arg(mode)
 
   # calculate plot layout
@@ -381,7 +385,7 @@ plot_tsne_spread = function(fluster_obj, markers = NULL, mode = c("arithmetic", 
 
   par(mfrow = c(dn, ac), mar = c(1, 1, 2, 1))
   for (i in 1:length(markers)) {
-    plot_tsne(fluster_obj = fluster_obj, marker = markers[i], mode = mode, cex = cex, proportional = proportional, emph = emph, highlight_clusters = highlight_clusters)
+    plot_tsne(fluster_obj = fluster_obj, marker = markers[i], mode = mode, cex = cex, proportional = proportional, emph = emph, highlight_clusters = highlight_clusters, show_cluster_number = show_cluster_number)
   }
 }
 
@@ -626,6 +630,7 @@ merge_categorical_clusters = function(fluster_obj, parameters = colnames(fluster
     clst[c_index[[i]]] = i
   }
   clustering = list(clst = clst, c_index = c_index, phenotype = phenotype, func_phenotype = NULL)
+  fluster_obj$orig_clustering = orig_clustering
   fluster_obj$clustering = clustering
 
   fluster_obj
@@ -654,7 +659,7 @@ parameter_modality = function(ff, parameters = detect_fl_parameters(ff), crit = 
   # multimodal thresholds
   for (i in which(!unimodal)) {
     kde = bkde(exprs(ff)[, parameters[i]])
-    res = find.local.minima(kde)
+    res = find.local.minima(kde, thresh = 0.0001)
     # find the lowest one above bx(1000)
     thresh[i] = min(res$x)
     if (length(res$x) > 1) {
