@@ -43,10 +43,11 @@ carried through the bin indices in the fluster object.
 
 ### Getting started
 
-There are currently only three methods in this package (more later!).
+There are currently xxx methods in this package (more later!).
 
 * fluster()
-* plot_fluster()
+* plot_fluster_graph()
+* plot_fluster_tsne()
 * fluster_map_sample()
 
 #### the fluster() method
@@ -78,16 +79,26 @@ is(fluster_obj)
 names(fluster_obj)
 ```
 
-#### the plot_fluster() method
-The second one renders a picture of the result using a minimum spanning tree representation.
+#### the plot_fluster_xxx() methods
+The first, plot_fluster_graph(), renders a picture of the result using a minimum spanning tree representation:
 
 ```{r, echo=TRUE, eval=FALSE}
-plot_fluster(fluster = fluster_obj)
+plot_fluster_graph(fluster = fluster_obj)
 ```
 
 ```{r, echo=FALSE, out.width="100%", fig.height=14, fig.width=14}
 
-suppressMessages(plot_fluster(fluster = fluster_obj))
+suppressMessages(plot_fluster_graph(fluster = fluster_obj))
+```
+
+The other one, plot_fluster_tsne(), renders the result of fluster() as a tSNE embedding:
+```{r, echo=TRUE, eval=FALSE}
+plot_fluster_tsne(fluster = fluster_obj)
+```
+
+```{r, echo=FALSE, out.width="100%", fig.height=14, fig.width=14}
+
+suppressMessages(plot_fluster_tsne(fluster = fluster_obj))
 ```
 
 

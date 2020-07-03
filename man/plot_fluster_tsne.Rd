@@ -6,14 +6,15 @@
 \usage{
 plot_fluster_tsne(
   fluster,
-  markers = NULL,
+  markers = colnames(fluster$centers),
   mode = c("arithmetic", "robust"),
-  cex = 50,
+  cex = 20,
   proportional = TRUE,
   emph = TRUE,
   cex.lab = 2,
   highlight_clusters = NULL,
-  legend = TRUE
+  legend = TRUE,
+  show_cluster_numbers = NULL
 )
 }
 \arguments{

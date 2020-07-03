@@ -660,10 +660,10 @@ parameter_modality = function(ff, parameters = detect_fl_parameters(ff), crit = 
   for (i in which(!unimodal)) {
     kde = bkde(exprs(ff)[, parameters[i]])
     res = find.local.minima(kde, thresh = 0.0001)
-    # find the lowest one above bx(1000)
+    # find the lowest one above bx(500)
     thresh[i] = min(res$x)
     if (length(res$x) > 1) {
-      thresh[i] = min(res$x[which(res$x > bx(1000))])
+      thresh[i] = min(res$x[which(res$x > bx(500))])
     }
   }
   # unimodal thresholds defined as greater than mean + 1sd

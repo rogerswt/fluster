@@ -38,7 +38,7 @@ An object of class 'fluster', with the following elements:
 }
 }
 \description{
-This function wraps most of what's needed.  It computes a fingerprint
+This function wraps most of what's needed to compute a fluster object.  It computes a fingerprint
 model, calculates the multivariate bin centers, clusters them using
 hierarchical agglomerative clustering (cluster::ages()), and
 creates graph strucures for visualization.

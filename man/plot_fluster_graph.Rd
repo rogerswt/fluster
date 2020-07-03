@@ -6,7 +6,7 @@
 \usage{
 plot_fluster_graph(
   fluster,
-  markers = colnames(fluster$mat),
+  markers = colnames(fluster$centers),
   vs = 10,
   ms = 5,
   log.size = FALSE,

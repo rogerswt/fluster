@@ -3,6 +3,7 @@
 export(fluster)
 export(fluster_add_mst)
 export(fluster_add_tsne)
+export(fluster_gate_clusters)
 export(fluster_map_sample)
 export(fluster_phenobars)
 export(map_functional_names)

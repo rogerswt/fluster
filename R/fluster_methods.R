@@ -31,7 +31,7 @@
 NULL
 
 #' @title fluster
-#' @description This function wraps most of what's needed.  It computes a fingerprint
+#' @description This function wraps most of what's needed to compute a fluster object.  It computes a fingerprint
 #' model, calculates the multivariate bin centers, clusters them using
 #' hierarchical agglomerative clustering (cluster::ages()), and
 #' creates graph strucures for visualization.
@@ -345,6 +345,40 @@ fluster_phenobars = function(fluster_obj,
         draw_flag(y = i-.2, q1 = qglbl$lo[i], q3 = qglbl$hi[i], med = qglbl$mn[i], cex = 2, lwd = 2, col = 'gray')
       }
     }
+  }
+}
+
+#' @title Gate Events in Cluster(s)
+#' @description Given a fluster model and a list of its clusters, gate a flowFrame
+#' or flowSet so as to include events that below to these clusters.
+#' @param fluster_obj An object of type "fluster", the result of running fluster()
+#' @param fcs_obj A flowFrame or flowSet to be gated.
+#' @param clusters A list of clusters we want to gate.
+#' @return The gated flowFrame or flowSet
+#' @export
+fluster_gate_clusters = function(fluster_obj, fcs_obj, clusters) {
+  # get a list of bins that belong to the indicated clusters
+  bvec = which(fluster_obj$clustering$clst %in% clusters)
+
+  # gate the fcs_obj
+  if (is(fcs_obj) == "flowFrame") {
+    ff = fcs_obj
+
+    # apply the flowFP model to the fcs_obj
+    ff = fcs_obj
+    fp = flowFP(ff, fluster_obj$mod)
+    ev = which(tags(fp)[[1]] %in% bvec)
+    exprs(ff) = exprs(ff)[ev, ]
+    return(ff)
+
+  } else {
+    fs = fcs_obj
+    fp = flowFP(fs, fluster_obj$mod)
+    for (i in 1:length(fs)) {
+      ev = which(tags(fp)[[i]] %in% bvec)
+      exprs(fs[[i]]) = exprs(fs[[i]])[ev, ]
+    }
+    return(fs)
   }
 }
 
