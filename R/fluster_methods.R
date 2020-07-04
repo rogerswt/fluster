@@ -156,7 +156,7 @@ fluster_add_mst = function(fluster_obj) {
   mst = igraph::mst(g)
   ag = fluster_obj$agnes_obj
   n_clust = length(fluster_obj$clustering$c_index)
-  cag = agnes_to_community(ag, nclust = n_clust)   # BUGBUGBUG - not correct with merging
+  cag = agnes_to_community(ag, nclust = n_clust)
   gcomm = make_graph_from_community(comm = cag, g = mst)
   gcomm = attach_layout_fr(gcomm)
   fluster_obj$graph = gcomm

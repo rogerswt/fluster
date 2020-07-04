@@ -197,7 +197,7 @@ make_graph_from_community = function(comm, g) {
         gcomm = add_edges(gcomm, c(i, j))
         E(gcomm)$strength[k] = res$strength
         k = k + 1
-        cat(i, j, "\n")
+        # cat(i, j, "\n")
       }
     }
   }
