@@ -9,8 +9,9 @@ fluster_phenobars(
   parameters = colnames(fluster_obj$centers),
   cluster = 1,
   bin_indices = NULL,
-  mode = c("arithmetic", "robust"),
   plot_global_flag = FALSE,
+  show_thresholds = TRUE,
+  show_sd_fac = TRUE,
   main = paste("Cluster", cluster)
 )
 }
@@ -23,9 +24,13 @@ fluster_phenobars(
 
 \item{bin_indices}{Instead of bin indices in a cluster, specify them directly.}
 
-\item{mode}{Use either arithmetic (mean/sd) or robust (median/quarties).}
-
 \item{plot_global_flag}{Indicate the global distributions.}
+
+\item{show_thresholds}{Logical. Show per-parameter thresholds.}
+
+\item{show_sd_fac}{Logical.  Superimpose modified error flags if sd_fac != 1.0.}
+
+\item{main}{Title of plot.}
 }
 \description{
 Draw a "phenobar" representation of a cluster phenotype.  Bars have

@@ -2,7 +2,7 @@
 % Please edit documentation in R/fluster_methods.R
 \name{fluster}
 \alias{fluster}
-\title{fluster}
+\title{Fingerprint-based Clustering}
 \usage{
 fluster(
   fcs,
@@ -11,7 +11,11 @@ fluster(
   nclust = NULL,
   merge = TRUE,
   graph = TRUE,
-  tsne = TRUE
+  tsne = TRUE,
+  manual_thresholds = NULL,
+  skew.crit = 0.2,
+  modality = NULL,
+  sd_fac = 1
 )
 }
 \arguments{
@@ -27,6 +31,23 @@ fluster(
 will make a guess as to the "best" number of clusters}
 
 \item{graph}{Logical: should we compute the MST for visualization?}
+
+\item{tsne}{Logical: should we compute a tSNE embedding for visualization?}
+
+\item{manual_thresholds}{A named vector of one or more values that will override
+the internally-calculated positivity thresholds.  If NULL (default) use the internally-calculated
+thresholds.}
+
+\item{skew.crit}{Numeric (default = 0.2).  for unimodally-distributed markers,
+if abs(skewness) of the global distribution of a parameter is smaller than this
+criterion, that parameter is deemed uninformative and will be dropped from further
+consideration (unless overridden via manual_thresholds).  See Description.}
+
+\item{modality}{If previously computed with examine_positivity_thresholds, you can pass it
+in.  If NULL, modality is computed internally.}
+
+\item{sd_fac}{A factor by which to multiply per-marker cluster standard deviation to determine
+positivity.}
 }
 \value{
 An object of class 'fluster', with the following elements:
@@ -38,11 +59,6 @@ An object of class 'fluster', with the following elements:
 }
 }
 \description{
-This function wraps most of what's needed to compute a fluster object.  It computes a fingerprint
-model, calculates the multivariate bin centers, clusters them using
-hierarchical agglomerative clustering (cluster::ages()), and
-creates graph strucures for visualization.
-
 Fluster (\strong{F}ingerprint-based c\strong{luster}ing)
 implements a workflow of doing Cytometric Fingerprint (CF) binning of
 a flowFrame (or flowSet)
@@ -50,8 +66,11 @@ using flowFP to a relatively high resolution (default nRecursions of 12 results
 in 4096 bins).  The bin centroids are then computed, using the median value of all
 of the events in the bin for each of the included parameters.  Next, these
 multivariate bin centroids are clustered using agglommerative hierarchical clustering
-(cluster::agnes()).  The resulting data are represented in a graph structure
+\code{cluster::agnes()}.  The resulting data are represented in a graph structure and or as a tSNE embedding
 for visualization and interpretation.
+
+The parameter skew.crit determines whether a marker is considered to be informative.
+In order to force ALL markers to be considered, set skew.crit = 0.0.
 }
 \examples{
 load(system.file("extdata", "sampled_flowset_young.rda", package = "fluster"))

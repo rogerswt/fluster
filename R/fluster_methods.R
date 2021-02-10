@@ -30,11 +30,7 @@
 #' @import wadeTools
 NULL
 
-#' @title fluster
-#' @description This function wraps most of what's needed to compute a fluster object.  It computes a fingerprint
-#' model, calculates the multivariate bin centers, clusters them using
-#' hierarchical agglomerative clustering (cluster::ages()), and
-#' creates graph strucures for visualization.
+#' @title Fingerprint-based Clustering
 #' @param fcs The data (either a flowFrame or a flowSet)
 #' @param parameters The parameters in fcs used for analysis
 #' @param nRecursions The number of recursions in calculating the fingerprint (default = 12)
@@ -42,6 +38,18 @@ NULL
 #' @param merge Logical: should we merge initial clusters based on categorical similarity?
 #' will make a guess as to the "best" number of clusters
 #' @param graph Logical: should we compute the MST for visualization?
+#' @param tsne Logical: should we compute a tSNE embedding for visualization?
+#' @param manual_thresholds A named vector of one or more values that will override
+#' the internally-calculated positivity thresholds.  If NULL (default) use the internally-calculated
+#' thresholds.
+#' @param skew.crit Numeric (default = 0.2).  for unimodally-distributed markers,
+#' if abs(skewness) of the global distribution of a parameter is smaller than this
+#' criterion, that parameter is deemed uninformative and will be dropped from further
+#' consideration (unless overridden via manual_thresholds).  See Description.
+#' @param modality If previously computed with examine_positivity_thresholds, you can pass it
+#' in.  If NULL, modality is computed internally.
+#' @param sd_fac A factor by which to multiply per-marker cluster standard deviation to determine
+#' positivity.
 #' @description Fluster (**F**ingerprint-based c**luster**ing)
 #'  implements a workflow of doing Cytometric Fingerprint (CF) binning of
 #' a flowFrame (or flowSet)
@@ -49,8 +57,11 @@ NULL
 #' in 4096 bins).  The bin centroids are then computed, using the median value of all
 #' of the events in the bin for each of the included parameters.  Next, these
 #' multivariate bin centroids are clustered using agglommerative hierarchical clustering
-#' (cluster::agnes()).  The resulting data are represented in a graph structure
+#' \code{cluster::agnes()}.  The resulting data are represented in a graph structure and or as a tSNE embedding
 #' for visualization and interpretation.
+#'
+#' The parameter skew.crit determines whether a marker is considered to be informative.
+#' In order to force ALL markers to be considered, set skew.crit = 0.0.
 #' @return An object of class 'fluster', with the following elements:
 #' \describe{
 #'   \item{mod}{The flowFPModel generated}
@@ -63,10 +74,19 @@ NULL
 #' flust_params = c(7:9, 11:22)
 #' flust_obj = fluster(fs_young, parameters = flust_params)
 #' @export
-fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merge = TRUE, graph = TRUE, tsne = TRUE) {
+fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merge = TRUE, graph = TRUE, tsne = TRUE,
+                   manual_thresholds = NULL, skew.crit = 0.2, modality = NULL, sd_fac = 1.0) {
+
+  call.args = list(parameters = parameters, nRecursions = nRecursions,
+                   nclust = nclust, merge = merge, graph = graph, tsne = tsne,
+                   manual_thresholds = manual_thresholds, skew.crit = skew.crit,
+                   modality = modality, sd_fac = sd_fac
+  )
+
   if (is(fcs, "flowFrame")) {
     ff = fcs
   } else if (is(fcs, "flowSet")) {
+    message("Aggregating the flowSet...")
     ff = suppressWarnings(as(fcs, "flowFrame"))
     flowCore::exprs(ff) = flowCore::exprs(ff)[,which(flowCore::colnames(flowCore::exprs(ff)) != "Original")]
   } else {
@@ -80,16 +100,36 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merg
     }
   }
 
+  # determining modality and calculating positivity thresholds
+  if (is.null(modality)) {
+  message("Calculating positivity thresholds from global distributions...")
+    modality = parameter_modality(ff, parameters = parameters, skew.crit = skew.crit, manual_thresholds = manual_thresholds)
+  } else {
+    message("Using previously calculated modality")
+  }
+
+  # drop parameters that were deemed uninformative via the skewness test
+  idx = which(is.na(modality$thresh))
+  if (length(idx) > 0) {
+    drop.markers = parameters[idx]
+    message("NOTE: dropping ", paste(drop.markers, collapse = " "), " from further consideration.")
+    parameters = parameters[-idx]
+    modality$unimodal = modality$unimodal[-idx]
+    modality$thresh = modality$thresh[-idx]
+    modality$p.value = modality$p.value[-idx]
+  }
+
   message("computing fingerprint bins...")
   mod = flowFP::flowFPModel(ff, parameters = parameters, nRecursions = nRecursions)
   fp = flowFP::flowFP(ff, mod)
+
   message("calculating bin centers...")
-  res = calculate_bin_phenotypes(fp = fp, fs = ff, method = "median")
-  mfi = as.list(data.frame(t(res$center)))
+  res = calculate_bin_phenotypes(fp = fp, fs = ff)
+  mat = t(res$center)
+  variance = t(res$variance)
 
   # agnes on bin centers
   message("clustering bins...")
-  mat = t(res$center)
   ag = agnes(mat)
 
   # check nclust
@@ -107,26 +147,24 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merg
   }
   clst = list(clst = clusters, c_index = c_index, c_centers = NULL)
 
-  # determining modality
-  modality = parameter_modality(ff, parameters = parameters)
-
-  fluster_obj = list(mod = mod, centers = mat, agnes_obj = ag, graph = NULL, tsne = NULL, clustering = clst, modality = modality)
+  fluster_obj = list(call.args = call.args, fcs = fcs, mod = mod, centers = mat, bvar = variance, agnes_obj = ag,
+                     graph = NULL, tsne = NULL, clustering = clst, modality = modality)
   class(fluster_obj) = "fluster"
 
   # merging clusters
   if (merge) {
-    fluster_obj = merge_categorical_clusters(fluster_obj = fluster_obj, parameters = parameters)
+    fluster_obj = merge_categorical_clusters(fluster_obj = fluster_obj, parameters = parameters, sd_fac = sd_fac)
     nclust = max(fluster_obj$clustering$clst)
     message("merging clusters, resulting in ", nclust, " clusters...")
 
   }
 
   # calculate cluster centers, mostly for visualization
-  c_centers = matrix (NA, nrow = 0, ncol = length(parameters))
+  c_centers = matrix(NA, nrow = 0, ncol = length(parameters))
   colnames(c_centers) = parameters
   for (i in 1:nclust) {
     idx = which(fluster_obj$clustering$clst == i)
-    c_centers = rbind(c_centers, distributions_bins(fluster_obj, parameters, bin_indices = idx)$med)
+    c_centers = rbind(c_centers, distributions_bins(fluster_obj, parameters, bin_indices = idx)$mn)
   }
   fluster_obj$clustering$c_centers = c_centers
 
@@ -140,6 +178,80 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merg
     message("builing a tSNE representation of clusters...")
     fluster_obj = fluster_add_tsne(fluster_obj)
   }
+
+  fluster_obj
+}
+
+#' @title Merge Categorically Similar Clusters
+#' @description Clusters are labeled with a categorical vector in which each
+#' marker is either "hi" or "lo" with respect to a threshold.  If a marker is not unambiguously
+#' either hi or lo, it's labeled as "un" for "unknown.  To receive hi (lo), the
+#' cluster center must be sufficiently above (below) the threshold in units of
+#' the standard deviation of that marker.
+#' @param fluster_obj A fluster object.
+#' @param parameters The parameters of the fluster object.
+#' @param sd_fac A factor multiplying the standard deviation to determine if that
+#' marker is sufficiently above (below) the threshold in order to labeled "hi" ("lo").
+#' @return A fluster object after categorical merging.
+#' @export
+merge_categorical_clusters = function(fluster_obj, parameters = colnames(fluster_obj$centers), sd_fac = 1.0) {
+  n_clust = max(fluster_obj$clustering$clst)
+
+  # overwrite affected call parameters in fluster_obj
+  fluster_obj$call.args$sd_fac = sd_fac
+  fluster_obj$call.args$merge = TRUE
+
+  # get the categorical mapping
+  categ = list()
+  # for (i in 1:n_clust) {
+    categ = categorical_phenotype_all_clusters(fluster_obj = fluster_obj, parameters = parameters, sd_fac = sd_fac)
+  # }
+
+  # roll through and create clusters of clusters
+  cmerge = list()
+  phenotype = list()
+  # cvec is a vector of cluster indices.  When a cluster joins a merge, it's removed from this vector
+  cvec = 1:n_clust
+  k = 1
+
+  while (length(cvec) > 0) {
+    # get the head of the list of remaining clusters
+    ith = cvec[1]
+    cmerge[[k]] = ith                          # add ith to the next merge
+    phenotype[[k]] = categ[[ith]]              # record the phenotype
+    cvec = cvec[which(cvec != ith)]            # remove it from cvec
+    j = 1
+    while (j <= length(cvec)) {
+      jth = cvec[j]
+      if (compare_categories(categ[[ith]], categ[[jth]])) {
+        cmerge[[k]] = append(cmerge[[k]], jth)     # add jth cluster to cmerge
+        cvec = cvec[which(cvec != jth)]            # remove jth cluster from cvec
+        j = j - 1                                  # don't skip next element
+      }
+      j = j + 1
+    }
+    k = k + 1
+  }
+
+  # replace clustering slot with the merged result
+  if (is.null(fluster_obj[["original_clustering"]])) {
+    orig_clustering = fluster_obj$clustering
+  }
+  c_index = list()
+  for (i in 1:length(cmerge)) {
+    c_index[[i]] = vector(mode = 'numeric')
+    for (j in 1:length(cmerge[[i]])) {
+      c_index[[i]] = append(c_index[[i]], orig_clustering$c_index[[cmerge[[i]][j]]])
+    }
+  }
+  nbins = 2 ^ nRecursions(fluster_obj$mod)
+  clst = rep(NA, length = nbins)
+  for (i in 1:length(c_index)) {
+    clst[c_index[[i]]] = i
+  }
+  clustering = list(clst = clst, c_index = c_index, phenotype = phenotype, func_phenotype = NULL)
+  fluster_obj$orig_clustering = orig_clustering
+  fluster_obj$clustering = clustering
 
   fluster_obj
 }
@@ -279,16 +391,18 @@ fluster_map_sample = function(ff, fluster_obj) {
 #' @param parameters Which parameters to include in the plot (default = all parameters)
 #' @param cluster Which cluster to plot.
 #' @param bin_indices Instead of bin indices in a cluster, specify them directly.
-#' @param mode Use either arithmetic (mean/sd) or robust (median/quarties).
 #' @param plot_global_flag Indicate the global distributions.
+#' @param show_thresholds Logical. Show per-parameter thresholds.
+#' @param show_sd_fac Logical.  Superimpose modified error flags if sd_fac != 1.0.
+#' @param main Title of plot.
 #' @export
 fluster_phenobars = function(fluster_obj,
                              parameters = colnames(fluster_obj$centers),
                              cluster = 1, bin_indices = NULL,
-                             mode = c("arithmetic", "robust"),
                              plot_global_flag = FALSE,
+                             show_thresholds = TRUE,
+                             show_sd_fac = TRUE,
                              main = paste("Cluster", cluster)) {
-  mode = match.arg(mode)
 
   # make an empty plot
   plot(0, 0, pch = '', xlim = c(0, bx(262143)), ylim = c(1 - .3, length(parameters) + .3),
@@ -301,7 +415,7 @@ fluster_phenobars = function(fluster_obj,
   centers = fluster_obj$centers
 
   # get the bin indices of the cluster
-  if(is.null(bin_indices)) {
+  if (is.null(bin_indices)) {
     idx = which(fluster_obj$clustering$clst == cluster)
   } else {
     idx = bin_indices
@@ -309,41 +423,39 @@ fluster_phenobars = function(fluster_obj,
 
   val = distributions_bins(fluster_obj, parameters, bin_indices = idx)
 
-  if (mode == "robust") {
-    # draw the median
-    col = pcolor(val$med, min_value = 0, max_value = 5)
-    add_bars(vals = val$med, yvals = 1:length(parameters), col = col)
+  # draw the mean
+  col = pcolor(val$mn, min_value = 0, max_value = 5)
+  add_bars(vals = val$mn, yvals = 1:length(parameters), col = col)
 
-    # draw the flags
-    for (i in 1:length(parameters)) {
-      draw_flag(y = i, q1 = val$q1[i], q3 = val$q3[i], med = NA, cex = 2, lwd = 2)
-    }
+  # draw the flags
+  for (i in 1:length(parameters)) {
+    draw_flag(y = i, q1 = val$lo[i], q3 = val$hi[i], med = NA, cex = 2, lwd = 2)
+  }
 
-    # add global flags
-    if(plot_global_flag) {
-      n_bins = 2^nRecursions(fluster_obj$mod)
-      qglbl = distributions_bins(fluster_obj, parameters = parameters, bin_indices = 1:n_bins)
+  if (show_sd_fac) {
+    sd_fac = fluster_obj$call.args$sd_fac
+    if (sd_fac != 1) {
       for (i in 1:length(parameters)) {
-        draw_flag(y = i-.2, q1 = qglbl$q1[i], q3 = qglbl$q3[i], med = qglbl$med[i], cex = 2, lwd = 2, col = 'gray')
+        sdev = val$hi[i] - val$lo[i]
+        mod_sdev = sd_fac * sdev
+        draw_flag(y = i, q1 = val$mn[i] - .5 * mod_sdev, q3 = val$mn[i] + 0.5 * mod_sdev, med = NA, cex = 2, lwd = 2, col = 'gray')
       }
     }
-  } else {
-    # draw the mean
-    col = pcolor(val$med, min_value = 0, max_value = 5)
-    add_bars(vals = val$mn, yvals = 1:length(parameters), col = col)
+  }
 
-    # draw the flags
+  if (show_thresholds) {
     for (i in 1:length(parameters)) {
-      draw_flag(y = i, q1 = val$lo[i], q3 = val$hi[i], med = NA, cex = 2, lwd = 2)
+      p = parameters[i]
+      draw_thresh(y = i, thresh = fluster_obj$modality$thresh[p], len = .7, col = 'blue', lwd = 2)
     }
+  }
 
-    # add global flags
-    if(plot_global_flag) {
-      n_bins = 2^nRecursions(fluster_obj$mod)
-      qglbl = distributions_bins(fluster_obj, parameters = parameters, bin_indices = 1:n_bins)
-      for (i in 1:length(parameters)) {
-        draw_flag(y = i-.2, q1 = qglbl$lo[i], q3 = qglbl$hi[i], med = qglbl$mn[i], cex = 2, lwd = 2, col = 'gray')
-      }
+  # add global flags
+  if (plot_global_flag) {
+    n_bins = 2^nRecursions(fluster_obj$mod)
+    qglbl = distributions_bins(fluster_obj, parameters = parameters, bin_indices = 1:n_bins)
+    for (i in 1:length(parameters)) {
+      draw_flag(y = i - .2, q1 = qglbl$lo[i], q3 = qglbl$hi[i], med = qglbl$mn[i], cex = 2, lwd = 2, col = 'gray')
     }
   }
 }
@@ -381,4 +493,59 @@ fluster_gate_clusters = function(fluster_obj, fcs_obj, clusters) {
     return(fs)
   }
 }
+
+#' @title Examine Positivity Thresholds
+#' @param fcs Either a flowSet or a flowFrame, as will be provided to fluster().
+#' @param parameters A vector of parameters to be considered.
+#' @param skew.crit A list of clusters we want to gate.
+#' @param manual_thresholds A named vector of one or more values that will override
+#' the internally-calculated positivity thresholds.
+#' @description Given fcs data and a list of markers (parameters), calculate
+#' and visualize positivity thresholds.
+#' @return A modality object that can be passed to fluster().
+#' @export
+examine_positivity_thresholds = function(fcs, parameters = NULL, skew.crit = 0.2, manual_thresholds = NULL) {
+  if (is(fcs, "flowSet")) {
+    message("Aggregating flowSet...")
+    fcs = as(fcs, "flowFrame")
+  }
+
+  if (is.null(parameters)) {
+    parameters = flowCore::colnames(fcs)[detect_fl_parameters(fcs)]
+  }
+
+  message("Calculating modality...")
+  modality = parameter_modality(fcs, parameters, skew.crit = skew.crit, manual_thresholds = manual_thresholds)
+
+  # calculate plot layout
+  n = length(parameters) + 1
+  sq = sqrt(n)
+  frac = sq - floor(sq)
+  if (frac == 0) {
+    ac = dn = floor(sq)
+  } else {
+    ac = floor(sq) + 1
+    dn = ceiling(n / ac)
+  }
+
+  opar = par(mfrow = c(dn, ac), mar = c(2, 1, 2, 1))
+  for (i in 1:length(parameters)) {
+    kde = bkde(exprs(fcs)[, parameters[i]], gridsize = 1001)
+    kde$y = kde$y / max(kde$y)
+    plot(kde, type = 'l', xlim = c(-2, 5.4), main = parameters[i], xaxt = 'n', yaxt = 'n', xlab = '', ylab = '')
+    lines(kde$x, 10 * kde$y, col = 'gray')
+    ax()
+    xline(modality$thresh[i], col = 'black', lwd = 2, lty = 'dotdash')
+    uni = ifelse(modality$unimodal[i], "U", "M")
+    text(x = 5.4, y = .8, labels = uni, pos = 2, cex = 1.5, col = "dodgerblue2")
+    if (!is.na(modality$skew[i])) {
+      col = ifelse(abs(modality$skewness[i]) < skew.crit, "indianred2", "dodgerblue2")
+      text(x = 5.4, y = .6, labels = sprintf("sk:%.3f", modality$skewness[i]), pos = 2, cex = 1.5, col = col)
+    }
+  }
+  par(opar)
+
+  return(modality)
+}
+
 

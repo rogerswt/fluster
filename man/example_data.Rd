@@ -3,7 +3,9 @@
 \name{example_data}
 \alias{example_data}
 \title{A Pair of Sampled flowSets}
-\format{FlowSets with 10 sampled flowFrames each.}
+\format{
+FlowSets with 10 sampled flowFrames each.
+}
 \source{
 \url{https://flowrepository.org/id/FR-FCM-ZZGS}
 }
