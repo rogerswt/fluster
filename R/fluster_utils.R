@@ -542,22 +542,46 @@ agnes_to_community = function(ag, nclust) {
 # replace this function with one that computes
 # variances directly on events
 #################################################
+# distributions_bins = function(fluster_obj, parameters = colnames(fluster_obj$centers), bin_indices) {
+#   centers = fluster_obj$centers
+#   bin_var = fluster_obj$bvar
+#   idx = bin_indices
+#
+#   mn_vec = lo_vec = hi_vec = vector(mode = 'numeric')
+#   for (i in 1:length(parameters)) {
+#     mn_vec[i] = mean(centers[idx,parameters[i]])
+#     # add variances of bins to variance of cluster
+#     if (length(idx) <= 1) {
+#       cvar = 0
+#     } else {
+#       cvar = var(centers[idx,parameters[i]])
+#     }
+#     bvar = mean(bin_var[idx,parameters[i]])   # BUGBUG  - sum was giving strange results
+#     sdev = sqrt(cvar + bvar)
+#     lo_vec[i] = mn_vec[i] - 0.5 * sdev
+#     hi_vec[i] = mn_vec[i] + 0.5 * sdev
+#   }
+#   names(mn_vec) = names(lo_vec) = names(hi_vec) = parameters
+#
+#   return(list(mn = mn_vec, lo = lo_vec, hi = hi_vec))
+# }
+
 distributions_bins = function(fluster_obj, parameters = colnames(fluster_obj$centers), bin_indices) {
+  fcs = fluster_obj$fcs   # flowFrame
   centers = fluster_obj$centers
   bin_var = fluster_obj$bvar
   idx = bin_indices
 
+  # collect all events in the bins in bin_indices
+  data = exprs(fcs)
+  mod = fluster_obj$mod
+  fp = flowFP::flowFP(fcs, mod)
+  idx = which(tags(fp)[[1]] %in% bin_indices)   # select all events in bins
+
   mn_vec = lo_vec = hi_vec = vector(mode = 'numeric')
   for (i in 1:length(parameters)) {
-    mn_vec[i] = mean(centers[idx,parameters[i]])
-    # add variances of bins to variance of cluster
-    if (length(idx) <= 1) {
-      cvar = 0
-    } else {
-      cvar = var(centers[idx,parameters[i]])
-    }
-    bvar = mean(bin_var[idx,parameters[i]])   # BUGBUG  - sum was giving strange results
-    sdev = sqrt(cvar + bvar)
+    mn_vec[i] = mean(data[idx ,parameters[i]])
+    sdev = sd(data[idx,parameters[i]])
     lo_vec[i] = mn_vec[i] - 0.5 * sdev
     hi_vec[i] = mn_vec[i] + 0.5 * sdev
   }
@@ -565,6 +589,7 @@ distributions_bins = function(fluster_obj, parameters = colnames(fluster_obj$cen
 
   return(list(mn = mn_vec, lo = lo_vec, hi = hi_vec))
 }
+
 
 # this function calculates bin centers and standard deviations directly on
 # events belonging to each cluster.
@@ -713,15 +738,17 @@ parameter_modality = function(ff, parameters = detect_fl_parameters(ff), dip.cri
 # Rows are functional phenotypes (for example, CD4_EM)
 # columns are markers (e.g. CD4, CD8, CD3, ...)
 # Entries are either 'lo', 'hi', or 'dc' (indicating don't care)
-# rownames will define the subset names
+# First column contains the subset names
 # colnames MUST match the marker labeling in the data set
 # optional column labeled "Colors" will contain color coding of subsets
 retrieve_categorical_definitions = function(file) {
-  tab = read.csv(file, row.names = 1, as.is = TRUE)
+  tab = read.csv(file, row.names = NULL, as.is = TRUE)
 
   # now turn the columns into properly ordered factors
-  idx = which(tolower(colnames(tab)) != "color")
-  icol = (1:ncol(tab))[-idx]
+  icol = which(tolower(colnames(tab)) == "color")
+  idx = (1:ncol(tab))[-icol]
+  idx = idx[-1]     # first col is fnames
+  fnames = tab[ ,1]
   # for (i in idx) {
   #   tab[, i] = factor(tab[, i], levels = c("lo", "hi", "dc"))
   if (length(icol) == 1) {
@@ -731,12 +758,13 @@ retrieve_categorical_definitions = function(file) {
   }
   # }
 
-  return(list(defs = tab[, idx], colors = colors))
+  return(list(fnames = fnames, defs = tab[, idx], colors = colors))
 }
 
 assign_functional_names = function(fluster_obj, functional_definitions) {
   fd = as.matrix(functional_definitions$defs)
   fc = functional_definitions$colors
+  fn = functional_definitions$fnames
   # add to the fluster object
   fluster_obj$labels$definitions = fd
   fluster_obj$labels$colors = fc
@@ -753,9 +781,8 @@ assign_functional_names = function(fluster_obj, functional_definitions) {
       # extract values for cluster
       ctype = as.character(pheno[[i]][cmarkers])
       if (length(which(ctype == def)) == length(idx)) {
-        func_phenotype[i] = rownames(fd)[j]
+        func_phenotype[i] = fn[j]
         func_color[i] = fc[j]
-        break
       }
     }
   }
