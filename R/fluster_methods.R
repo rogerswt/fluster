@@ -147,7 +147,7 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merg
   }
   clst = list(clst = clusters, c_index = c_index, c_centers = NULL)
 
-  fluster_obj = list(call.args = call.args, fcs = fcs, mod = mod, centers = mat, bvar = variance, agnes_obj = ag,
+  fluster_obj = list(call.args = call.args, fcs = ff, mod = mod, centers = mat, bvar = variance, agnes_obj = ag,
                      graph = NULL, tsne = NULL, clustering = clst, modality = modality)
   class(fluster_obj) = "fluster"
 
