@@ -616,7 +616,7 @@ distributions_bins_all_clusters = function(fcs, fluster_obj, parameters = colnam
   return(list(center = center, sdev = sdev))
 }
 
-categorical_phenotype_all_clusters = function(fluster_obj, parameters = colnames(fluster_obj$centers), sd_fac = 1.0) {
+categorical_phenotype_all_clusters = function(fluster_obj, parameters = colnames(fluster_obj$centers), sd_fac) {
   fcs = fluster_obj$fcs
   if (is(fcs) == "flowSet") {
     fcs = as(fcs, "flowFrame")
