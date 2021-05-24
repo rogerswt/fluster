@@ -631,8 +631,8 @@ categorical_phenotype_all_clusters = function(fluster_obj, parameters = colnames
       names(p_category) = parameters
       for (p in parameters) {
         thr = fluster_obj$modality$thresh[p]
-        if (dbins$center[i, p] - 0.5 * dbins$sdev[i, p] > thr) {p_category[p] = 'hi'}
-        if (dbins$center[i, p] + 0.5 * dbins$sdev[i, p] < thr) {p_category[p] = 'lo'}
+        if (dbins$center[i, p] - 0.5 * sd_fac * dbins$sdev[i, p] > thr) {p_category[p] = 'hi'}
+        if (dbins$center[i, p] + 0.5 * sd_fac * dbins$sdev[i, p] < thr) {p_category[p] = 'lo'}
       }
       p_category = factor(p_category, levels = c("lo", "un", "hi"))
       categ[[i]] = p_category
