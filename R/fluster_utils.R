@@ -80,7 +80,7 @@ draw_cluster_legend = function(fluster_obj, cex.text = 1.25) {
   xcol = 0.05
   wcol = .1
   xtext = 0.18
-  subsets = rownames(fluster_obj$labels$definitions)
+  subsets = fluster_obj$labels$names
   cols = fluster_obj$labels$colors
 
   n_items = length(subsets)
@@ -768,6 +768,7 @@ assign_functional_names = function(fluster_obj, functional_definitions) {
   # add to the fluster object
   fluster_obj$labels$definitions = fd
   fluster_obj$labels$colors = fc
+  fluster_obj$labels$names = fn
 
   n_clust = length(fluster_obj$clustering$c_index)
   func_phenotype = rep('unassigned', length = n_clust)
