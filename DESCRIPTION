@@ -1,7 +1,7 @@
 Package: fluster
 Type: Package
 Title: Fingerprint-based clustering of flow cytometry data
-Version: 0.3.0
+Version: 1.0.1
 Author: Wade Rogers
 Maintainer: Wade Rogers <wade.rogers@spcytomics.com>
 Description: Fluster combines the speed and efficiency of Cytometric
