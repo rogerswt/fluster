@@ -6,7 +6,7 @@
 \usage{
 fluster_phenobars(
   fluster_obj,
-  parameters = colnames(fluster_obj$centers),
+  parameters = fluster_obj$parameters,
   cluster = 1,
   bin_indices = NULL,
   plot_global_flag = FALSE,

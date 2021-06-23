@@ -4,16 +4,10 @@
 \alias{merge_categorical_clusters}
 \title{Merge Categorically Similar Clusters}
 \usage{
-merge_categorical_clusters(
-  fluster_obj,
-  parameters = colnames(fluster_obj$centers),
-  sd_fac = 1
-)
+merge_categorical_clusters(fluster_obj, sd_fac = 1)
 }
 \arguments{
 \item{fluster_obj}{A fluster object.}
-
-\item{parameters}{The parameters of the fluster object.}
 
 \item{sd_fac}{A factor multiplying the standard deviation to determine if that
 marker is sufficiently above (below) the threshold in order to labeled "hi" ("lo").}
