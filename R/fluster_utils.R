@@ -537,45 +537,14 @@ agnes_to_community = function(ag, nclust) {
   comm
 }
 
-# calculate statistics for a collection of bins
-#################################################
-# replace this function with one that computes
-# variances directly on events
-#################################################
-# distributions_bins = function(fluster_obj, parameters = colnames(fluster_obj$centers), bin_indices) {
-#   centers = fluster_obj$centers
-#   bin_var = fluster_obj$bvar
-#   idx = bin_indices
-#
-#   mn_vec = lo_vec = hi_vec = vector(mode = 'numeric')
-#   for (i in 1:length(parameters)) {
-#     mn_vec[i] = mean(centers[idx,parameters[i]])
-#     # add variances of bins to variance of cluster
-#     if (length(idx) <= 1) {
-#       cvar = 0
-#     } else {
-#       cvar = var(centers[idx,parameters[i]])
-#     }
-#     bvar = mean(bin_var[idx,parameters[i]])   # BUGBUG  - sum was giving strange results
-#     sdev = sqrt(cvar + bvar)
-#     lo_vec[i] = mn_vec[i] - 0.5 * sdev
-#     hi_vec[i] = mn_vec[i] + 0.5 * sdev
-#   }
-#   names(mn_vec) = names(lo_vec) = names(hi_vec) = parameters
-#
-#   return(list(mn = mn_vec, lo = lo_vec, hi = hi_vec))
-# }
-
-distributions_bins = function(fluster_obj, parameters = colnames(fluster_obj$centers), bin_indices) {
+distributions_bins = function(fluster_obj, bin_indices) {
+  parameters = fluster_obj$parameters
   fcs = fluster_obj$fcs   # flowFrame
-  centers = fluster_obj$centers
-  bin_var = fluster_obj$bvar
   idx = bin_indices
 
   # collect all events in the bins in bin_indices
   data = exprs(fcs)
-  mod = fluster_obj$mod
-  fp = flowFP::flowFP(fcs, mod)
+  fp = fluster_obj$fp
   idx = which(tags(fp)[[1]] %in% bin_indices)   # select all events in bins
 
   mn_vec = lo_vec = hi_vec = vector(mode = 'numeric')
@@ -593,11 +562,13 @@ distributions_bins = function(fluster_obj, parameters = colnames(fluster_obj$cen
 
 # this function calculates bin centers and standard deviations directly on
 # events belonging to each cluster.
-distributions_bins_all_clusters = function(fcs, fluster_obj, parameters = colnames(fluster_obj$centers)) {
+distributions_bins_all_clusters = function(fcs, fluster_obj) {
+  parameters = fluster_obj$parameters
+
   if (is(fcs) == "flowSet") {
     fcs = as(fcs, "flowFrame")
   }
-  fp = flowFP(fcs, model = fluster_obj$mod)
+  fp = fluster_obj$fp
   tg = tags(fp)[[1]]
   nclust = length(fluster_obj$clustering$c_index)
 
@@ -616,12 +587,13 @@ distributions_bins_all_clusters = function(fcs, fluster_obj, parameters = colnam
   return(list(center = center, sdev = sdev))
 }
 
-categorical_phenotype_all_clusters = function(fluster_obj, parameters = colnames(fluster_obj$centers), sd_fac) {
+categorical_phenotype_all_clusters = function(fluster_obj, sd_fac) {
+  parameters = fluster_obj$parameters
   fcs = fluster_obj$fcs
   if (is(fcs) == "flowSet") {
     fcs = as(fcs, "flowFrame")
   }
-    dbins = distributions_bins_all_clusters(fcs, fluster_obj, parameters)
+    dbins = distributions_bins_all_clusters(fcs, fluster_obj)
 
     # label each parameter as either lo or hi
     nclust = length(fluster_obj$clustering$c_index)
@@ -643,7 +615,8 @@ categorical_phenotype_all_clusters = function(fluster_obj, parameters = colnames
 
 # label a cluster categorically
 # If the median for the cluster is above the parameter threshold, label it hi, otherwise lo
-categorical_phenotype = function(fluster_obj, parameters = colnames(fluster_obj$centers), cluster = 1, sd_fac = 1.0) {
+categorical_phenotype = function(fluster_obj, cluster = 1, sd_fac = 1.0) {
+  parameters = fluster_obj$parameters
   idx = fluster_obj$clustering$c_index[[cluster]]
   res = distributions_bins(fluster_obj, bin_indices = idx)
 
@@ -673,65 +646,60 @@ compare_categories = function(c1, c2) {
 
 
 
-# use the Hartigan dip-test to estimate modality for each parameter
-# calculate thresholds to be used to determine lo/hi categorization
-parameter_modality = function(ff, parameters = detect_fl_parameters(ff), dip.crit = 0.2, skew.crit,
-                              manual_thresholds) {
-  # sanity check that names of thresholds matches names in parameters
-  if (!is.null(manual_thresholds)) {
-    n_manual = length(manual_thresholds)
-    if (length(which(names(manual_thresholds) %in% parameters)) < n_manual) {
-      message("WARNING: names of manual thresholds do not match parameters.  Ignoring...")
-      manual_thresholds = NULL
+# make a named color transparent (e.g. "dodgerblue2)
+# alpha is in the interval [0, 1]
+make_transparent = function(col, alpha = .5) {
+  rgb = col2rgb(col)
+  r = format(as.hexmode(rgb[1]), width = 2)
+  g = format(as.hexmode(rgb[2]), width = 2)
+  b = format(as.hexmode(rgb[3]), width = 2)
+  a = format(as.hexmode(as.integer(alpha * 256)), width = 2)
+
+  ret = paste0("#", r, g, b, a)
+
+  ret
+}
+
+# calculate per-marker spreads and medians
+spreads_and_meds = function(fluster_obj) {
+  n_clust = max(fluster_obj$clustering$clst)
+  ff = fluster_obj$fcs
+  parameters = colnames(fluster_obj$centers)
+
+  med = spread = dip = matrix(NA, nrow = n_clust, ncol = length(parameters))
+  colnames(med) = colnames(spread) = colnames(dip) = parameters
+
+  fp = fluster_obj$fp
+  tg = tags(fp)[[1]]
+
+  for (i in 1:n_clust) {
+    n_min = 100    # BUGBUGBUG: think about this
+    ev = which(tg %in% fluster_obj$clustering$c_index[[i]])
+    for (j in 1:length(parameters)) {
+      if (length(ev) >= n_min) {
+        med[i, j] = median(exprs(ff)[ev, parameters[j]])
+        spread[i, j] = IQR(exprs(ff)[ev, parameters[j]])
+      } else {
+        med[i, j] = 0
+        spread[i, j] = Inf
+      }
     }
   }
-  if (is(ff, "flowSet")) {ff = as(ff, "flowFrame")}
+  return(list(med = med, spread = spread))
+}
 
-  pv = vector(mode = 'numeric')
-  for (i in 1:length(parameters)) {
-    pv[i] = suppressMessages(dip.test(exprs(ff)[, parameters[i]])$p.value)
-  }
+# select the dimmest and brightest tight clusters for a marker
+select_extremes = function(med, spread) {
+  tmp = med
+  tmp = (tmp - min(tmp)) / (max(tmp) - min(tmp))
+  tmp = 2 * (tmp - 0.5)
+  tmp = tmp / spread
 
-  names(pv) = parameters
-  unimodal = pv > dip.crit
-
-  # calculate hi/lo thresholds, conditioned on modality
-  thresh = skew = rep(NA, length(parameters))
-  names(thresh) = parameters
-
-  # multimodal thresholds
-  for (i in which(!unimodal)) {
-    kde = bkde(exprs(ff)[, parameters[i]])
-    res = find.local.minima(kde, thresh = 0.0001)
-    # find the lowest one above bx(500)
-    thresh[i] = min(res$x)
-    if (length(res$x) > 1) {
-      thresh[i] = min(res$x[which(res$x > bx(200))])   #BUGBUG: this is potentially fragile!!
-    }
-  }
-  # unimodal thresholds defined as follows:
-  #     if abs(skewness) > skew.crit
-  #        - thresh =  mean + skewness
-  #     else
-  #        -  NA (and that parameter will be dropped from further analysis)
-
-  for (i in which(unimodal)) {
-    x = exprs(ff)[, parameters[i]]
-    mn = mean(x)
-    skew[i] = dist.moment(x, r = 3)
-    if (abs(skew[i]) >= skew.crit) {
-      thresh[i] = mn + skew[i]
-    }
-  }
-  names(unimodal) = parameters
-  names(skew) = parameters
-
-  # override manually supplied thresholds
-  for (i in 1:length(manual_thresholds)) {
-    thresh[names(manual_thresholds)[i]] = manual_thresholds[i]
-  }
-
-  return(list(unimodal = unimodal, thresh = thresh, p.value = pv, skewness = skew))
+  idx = sort(tmp, index = TRUE)$ix
+  len = length(idx)
+  lo = idx[1]
+  hi = idx[len]
+  return(list(lo = lo, hi = hi))
 }
 
 # Use a spreadsheet to define functional phenotypes.
