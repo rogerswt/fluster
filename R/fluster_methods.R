@@ -34,6 +34,10 @@ NULL
 #' @param fcs The data (either a flowFrame or a flowSet)
 #' @param parameters The parameters in fcs used for analysis.  Default is all
 #' parameters in the input data.
+#' @param transformation Specify the transformation used when pre-processing
+#' the data.  Legal values are tranformations support in [wadeTools::ax()], which are
+#' c('biexp', 'asinh', 'log', 'linear', 'none').  This is used to draw appropriate axes
+#' in the included visualizations that depict MFI values.  Default is 'biexp'.
 #' @param nRecursions The number of recursions in calculating the fingerprint (default = 12)
 #' @param nclust The number of clusters you want panoply to make.  If NULL, fluster
 #' will decide based on analysis of the clustering dendrogram.
@@ -72,10 +76,10 @@ NULL
 #' flust_params = c(7:9, 11:22)
 #' flust_obj = fluster(fs_young, parameters = flust_params)
 #' @export
-fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merge = TRUE, graph = TRUE, tsne = TRUE,
+fluster = function(fcs, parameters = NULL, transformation = 'biexp', nRecursions = 12, nclust = NULL, merge = TRUE, graph = TRUE, tsne = TRUE,
                    manual_thresholds = NULL, modality = NULL, sd_fac = 1.0) {
 
-  call.args = list(parameters = parameters, nRecursions = nRecursions,
+  call.args = list(parameters = parameters, transformation = transformation, nRecursions = nRecursions,
                    nclust = nclust, merge = merge, graph = graph, tsne = tsne,
                    manual_thresholds = manual_thresholds,
                    modality = modality, sd_fac = sd_fac
@@ -126,7 +130,8 @@ fluster = function(fcs, parameters = NULL, nRecursions = 12, nclust = NULL, merg
   }
   clst = list(clst = clusters, c_index = c_index, c_centers = NULL)
 
-  fluster_obj = list(call.args = call.args, fcs = ff, parameters = parameters, mod = mod, fp = fp, centers = mat, bvar = variance, agnes_obj = ag,
+  fluster_obj = list(call.args = call.args, fcs = ff, transformation = transformation,
+                     parameters = parameters, mod = mod, fp = fp, centers = mat, bvar = variance, agnes_obj = ag,
                      graph = NULL, tsne = NULL, clustering = clst, modality = NULL)
   class(fluster_obj) = "fluster"
 
@@ -203,7 +208,7 @@ display_modality = function(fluster_obj) {
   opar = par(mfrow = c(dn, ac), mar = c(2, 2, 2, 1))
   for (marker in parameters) {
     plot(kde[[marker]][["global"]], type = 'l', lwd = 1, xaxt = 'n', xlab = '', ylab = '', main = marker)
-    ax()
+    ax(type = fluster_obj$transformation)
     bcol = "dodgerblue2"
     rcol = "indianred2"
     polygon(kde[[marker]][["global"]], col = make_transparent("black", alpha = .25), border = "black")
@@ -330,26 +335,51 @@ fluster_add_tsne = function(fluster_obj) {
 #' @title plot_fluster_graph
 #' @description Draw a picture of the result of fluster using graph-based representation of clusters.
 #' @param fluster The result of running fluster
+#' @param markers Markers to display in the spread
+#' @param mode Compute colors using either global or per-marker distributions.  Global
+#' distributions are color-coded directly by signals produced by the cytometer.  Per-marker
+#' mode shows colors relative to the positivity threshold for each marker (red colors for
+#' above-threshold and blue colors for below-threshold) in units of standard deviation
+#' for each marker.
 #' @param vs The max size of nodes in the graph
 #' @param ms The minimum size of nodes in the graph
-#' @param log_size If true, scale node sizes logarithmically
+#' @param log.size If true, scale node sizes logarithmically
 #' @param vertex_frame Logical.  Should we draw a frame.
-#' @param cex.main Scale factor for titles of the individual markers
+#' @param legend Logical.  Draw color legend.
+#' @param cex.main Scale factor for titles of the individual markers.
+#' @param cex.lab Scale factor for labels.
 #' @return N/A.
 #' @examples
 #' plot_fluster(fluster_obj)
 #' @export
-plot_fluster_graph = function(fluster, markers = colnames(fluster$centers), vs = 10, ms = 5, log.size = FALSE, vertex.frame = TRUE, cex.main = 2, cex.lab = 2) {
-  plot_comm_spread(fluster$graph, markers = colnames(fluster$mat), vs = vs, ms = ms,
+plot_fluster_graph = function(fluster, markers = colnames(fluster$centers), mode = c("global", "per-marker"),
+                              vs = 10, ms = 5, log.size = FALSE, vertex.frame = TRUE,
+                              legend = TRUE, cex.main = 2, cex.lab = 2) {
+  mode = match.arg(mode)
+  plot_comm_spread(fluster, markers = colnames(fluster$mat), mode, vs = vs, ms = ms,
                    log.size = log.size, vertex.frame = vertex.frame, cex.main = cex.main)
-  draw_color_scale(cex.lab = cex.lab)
+  if (legend) {
+    if (markers[1] != 'categorical') {
+      if (mode == 'global') {
+        draw_color_scale(cex.lab = cex.lab, transformation = fluster$transformation)
+      } else {
+        draw_per_marker_scale(dyn_range = 2, cex.lab = cex.lab)
+      }
+    } else {
+      draw_cluster_legend(fluster_obj = fluster, cex.text = cex.lab)
+    }
+  }
 }
 
 #' @title plot_fluster_tsne
 #' @description Draw a picture of the result of fluster using tsne representation of clusters.
 #' @param fluster The result of running fluster
 #' @param markers Markers to include in the spread
-#' @param mode Compute colors using either arithmetic or robust average
+#' @param mode Compute colors using either global or per-marker distributions.  Global
+#' distributions are color-coded directly by signals produced by the cytometer.  Per-marker
+#' mode shows colors relative to the positivity threshold for each marker (red colors for
+#' above-threshold and blue colors for below-threshold) in units of standard deviation
+#' for each marker.
 #' @param cex Scale factor for node size
 #' @param proportional Logical.  Scale by the number of events in the cluster
 #' @param emph Logical.  Emphasize each blob with a black line.
@@ -360,13 +390,18 @@ plot_fluster_graph = function(fluster, markers = colnames(fluster$centers), vs =
 #' @examples
 #' plot_fluster(fluster_obj)
 #' @export
-plot_fluster_tsne = function(fluster, markers = colnames(fluster$centers), mode = c("arithmetic", "robust"),
+plot_fluster_tsne = function(fluster, markers = colnames(fluster$centers), mode = c("global", "per-marker"),
                              cex = 20.0, proportional = TRUE, emph = TRUE, cex.lab = 2,
                              highlight_clusters = NULL, legend = TRUE, show_cluster_numbers = NULL) {
+  mode = match.arg(mode)
   plot_tsne_spread(fluster, markers, mode, cex, proportional, emph, highlight_clusters, show_cluster_numbers)
   if (legend) {
     if (markers[1] != 'categorical') {
-      draw_color_scale(cex.lab = cex.lab)
+      if (mode == 'global') {
+        draw_color_scale(cex.lab = cex.lab, transformation = fluster$transformation)
+      } else {
+        draw_per_marker_scale(dyn_range = 2, cex.lab = cex.lab)
+      }
     } else {
       draw_cluster_legend(fluster_obj = fluster, cex.text = cex.lab)
     }
@@ -442,7 +477,7 @@ fluster_phenobars = function(fluster_obj,
        xaxt = 'n', yaxt = 'n',
        xlab = '', ylab = '',
        main = main)
-  wadeTools::ax(1, type = 'biexp')
+  wadeTools::ax(1, type = fluster_obj$transformation)
   axis(side = 2, labels = parameters, at = 1:length(parameters), las = 1)
 
   centers = fluster_obj$centers

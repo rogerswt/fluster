@@ -7,6 +7,7 @@
 fluster(
   fcs,
   parameters = NULL,
+  transformation = "biexp",
   nRecursions = 12,
   nclust = NULL,
   merge = TRUE,
@@ -22,6 +23,11 @@ fluster(
 
 \item{parameters}{The parameters in fcs used for analysis.  Default is all
 parameters in the input data.}
+
+\item{transformation}{Specify the transformation used when pre-processing
+the data.  Legal values are tranformations support in \code{\link[wadeTools:ax]{wadeTools::ax()}}, which are
+c('biexp', 'asinh', 'log', 'linear', 'none').  This is used to draw appropriate axes
+in the included visualizations that depict MFI values.  Default is 'biexp'.}
 
 \item{nRecursions}{The number of recursions in calculating the fingerprint (default = 12)}
 

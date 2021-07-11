@@ -7,10 +7,12 @@
 plot_fluster_graph(
   fluster,
   markers = colnames(fluster$centers),
+  mode = c("global", "per-marker"),
   vs = 10,
   ms = 5,
   log.size = FALSE,
   vertex.frame = TRUE,
+  legend = TRUE,
   cex.main = 2,
   cex.lab = 2
 )
@@ -18,13 +20,25 @@ plot_fluster_graph(
 \arguments{
 \item{fluster}{The result of running fluster}
 
+\item{markers}{Markers to display in the spread}
+
+\item{mode}{Compute colors using either global or per-marker distributions.  Global
+distributions are color-coded directly by signals produced by the cytometer.  Per-marker
+mode shows colors relative to the positivity threshold for each marker (red colors for
+above-threshold and blue colors for below-threshold) in units of standard deviation
+for each marker.}
+
 \item{vs}{The max size of nodes in the graph}
 
 \item{ms}{The minimum size of nodes in the graph}
 
-\item{cex.main}{Scale factor for titles of the individual markers}
+\item{log.size}{If true, scale node sizes logarithmically}
 
-\item{log_size}{If true, scale node sizes logarithmically}
+\item{legend}{Logical.  Draw color legend.}
+
+\item{cex.main}{Scale factor for titles of the individual markers.}
+
+\item{cex.lab}{Scale factor for labels.}
 
 \item{vertex_frame}{Logical.  Should we draw a frame.}
 }

@@ -53,7 +53,7 @@ calculate_bin_phenotypes = function(fp, fs) {
 }
 
 # assumes biexp vert scale
-draw_color_scale = function(min_col_value = 0, max_col_value = 5, ...) {
+draw_color_scale = function(min_col_value = 0, max_col_value = 5, transformation, ...) {
   requireNamespace("wadeTools")
   ll = -0.5
   ul = bx(262143)
@@ -62,14 +62,36 @@ draw_color_scale = function(min_col_value = 0, max_col_value = 5, ...) {
   cols = pcolor(pvalue = vec, min_value = min_col_value, max_value = max_col_value)
 
   opar = par(mar = c(0, 5, 0, 0) + .1)
-  plot(0, 0, pch = '', bty = 'n', xaxt = 'n', yaxt = 'n', xlab = "", ylab = "Fluorescence Intensity",
+  plot(0, 0, pch = '', bty = 'n', xaxt = 'n', yaxt = 'n', xlab = "", ylab = "Signal",
        xlim = c(0, 5), ylim = c(ll, ul), ...
   )
   for (i in 1:length(vec)) {
     y = vec[i]
     segments(x0 = 0, y0 = y, x1 = 1, y1 = y, col = cols[i], lwd = 3)
   }
-  wadeTools::ax(axis = 2, type = 'biexp', ...)
+  wadeTools::ax(axis = 2, type = transformation, ...)
+  par(opar)
+}
+
+draw_per_marker_scale = function(dyn_range = 2, ...) {
+  ll = -dyn_range
+  ul = dyn_range
+
+  vec = seq(ll, ul, length.out = 500)
+  cols = red_blue_fun(vec, dyn_range = dyn_range)
+
+  opar = par(mar = c(0, 5, 0, 0) + .1)
+  plot(0, 0, pch = '', bty = 'n', xaxt = 'n', yaxt = 'n', xlab = "", ylab = "Rel. Signal",
+       xlim = c(0, 5), ylim = c(ll, ul), ...
+  )
+  for (i in 1:length(vec)) {
+    y = vec[i]
+    segments(x0 = 0, y0 = y, x1 = 1, y1 = y, col = cols[i], lwd = 3)
+  }
+  at = -dyn_range:dyn_range
+  lab = at
+  lab[which(at == 0)] = "Thresh"
+  axis(side = 2, at = at, labels = lab)
   par(opar)
 }
 
@@ -121,6 +143,47 @@ pcolor = function(pvalue, min_value = 0, max_value = 4) {
     col_values[which(pvalue <= min_value)] = zero_col
   }
 
+  col_values
+}
+
+# standardize cluster centers by subtracting thresh, dividing by sdev
+standardize_to_threshold = function(vals, thresh) {
+  sdev = sd(vals)
+  vals = (vals - thresh) / sdev
+
+  vals
+}
+
+red_blue_fun = function(vals, dyn_range = 2) {
+  top_col = "darkred"
+  pos_mid = "pink"
+  bot_col = "darkblue"
+  neg_mid = "lightblue"
+  mid_col = "white"
+
+  len = length(vals)
+
+  pos_idx = which(vals >= 0)
+  neg_idx = which(vals <= 0)
+
+  vals[vals >  dyn_range] =  dyn_range
+  vals[vals < -dyn_range] = -dyn_range
+  pos_cols = fields::color.scale(z = vals[pos_idx], fields::two.colors(n = 51, start = mid_col, end = top_col, middle = pos_mid), zlim = c(0, dyn_range))
+  neg_cols = fields::color.scale(z = vals[neg_idx], fields::two.colors(n = 51, start = bot_col, end = mid_col, middle = neg_mid), zlim = c(-dyn_range, 0))
+
+  col_values = rep(NA, len)
+  col_values[pos_idx] = pos_cols
+  col_values[neg_idx] = neg_cols
+
+  col_values
+}
+
+ # calculate red/blue colors using per-marker order statistics
+perMarkerColor = function(vals, thresh) {
+
+  vals = standardize_to_threshold(vals, thresh)
+
+  col_values = red_blue_fun(vals = vals)
 
   col_values
 }
@@ -265,7 +328,23 @@ add_mfi_vertex_attributes = function(g, mfi) {
 
 
 
-plot_community_graph = function(g, marker, vs = 3, ms = 0, log.size = TRUE, vertex.frame = TRUE, cex.main) {
+plot_community_graph = function(fluster_obj, marker, mode = c("global", "per-marker"), vs = 3, ms = 0, log.size = TRUE, vertex.frame = TRUE, cex.main) {
+  if (is.null(fluster_obj$graph)) {
+    stop("You must first compute the MST graph using fluster_add_graph")
+  }
+  g = fluster_obj$graph
+  mode = match.arg(mode)
+  n_clust = length(fluster_obj$clustering$c_index)
+  if (marker == "categorical") {
+    cols = fluster_obj$clustering$func_color
+  } else {
+    if (mode == 'global') {
+      cols = pcolor(vertex_attr(g, marker))
+    } else {
+      cols = perMarkerColor(vertex_attr(g, marker), thresh = fluster_obj$modality$thresh[marker])
+    }
+  }
+
   g = set_weight_as(g, "distance")
 
   if (log.size) {
@@ -285,13 +364,14 @@ plot_community_graph = function(g, marker, vs = 3, ms = 0, log.size = TRUE, vert
   } else {
     vfc = NA
   }
-  plot(g, vertex.size = vsize, vertex.color = pcolor(vertex_attr(g, marker)),
+  plot(g, vertex.size = vsize, vertex.color = cols,
        vertex.frame.color = vfc, vertex.label = NA)
   title(main = marker, cex.main = cex.main)
 }
 
 
-plot_comm_spread = function(g, markers = NULL, vs = 3, ms = 1, log.size = TRUE, vertex.frame = FALSE, cex.main) {
+plot_comm_spread = function(fluster_obj, mode = c("global", "per-marker"), markers = NULL, vs = 3, ms = 1, log.size = TRUE, vertex.frame = FALSE, cex.main) {
+  g = fluster_obj$graph
   if (is.null(markers)) {
     markers = vertex_attr_names(g)
     markers = markers[-which(markers == "size")]
@@ -311,23 +391,28 @@ plot_comm_spread = function(g, markers = NULL, vs = 3, ms = 1, log.size = TRUE, 
   par(mfrow = c(dn, ac), mar = c(0, 0, 2, 0))
   for (i in 1:length(markers)) {
     marker = markers[i]
-    plot_community_graph(g, marker, vs = vs, ms = ms, log.size = log.size, vertex.frame = vertex.frame, cex.main)
+    plot_community_graph(fluster_obj, marker, mode = mode, vs = vs, ms = ms, log.size = log.size, vertex.frame = vertex.frame, cex.main)
   }
 }
 
-plot_tsne = function(fluster_obj, marker, mode = c("arithmetic", "robust"),
+plot_tsne = function(fluster_obj, marker, mode = c("global", "per-marker"),
                      box = TRUE, cex = 50.0, proportional = TRUE, emph = TRUE,
                      highlight_clusters = NULL, show_cluster_number = NULL) {
   if (is.null(fluster_obj$tsne)) {
     stop("You must first compute the tSNE embedding using fluster_add_tsne")
   }
   mode = match.arg(mode)
-  centers = fluster_obj$centers
   n_clust = length(fluster_obj$clustering$c_index)
   if (marker == "categorical") {
     cols = fluster_obj$clustering$func_color
   } else {
-    cols = pcolor(fluster_obj$clustering$c_centers[, marker], min_value = 0.0, max_value = 5.0)
+    if (mode == 'global') {
+      cols = pcolor(fluster_obj$clustering$c_centers[, marker], min_value = 0.0, max_value = 5.0)
+    } else {
+      vals = fluster_obj$clustering$c_centers[, marker]
+      thresh = fluster_obj$modality$thresh[marker]
+      cols = perMarkerColor(vals, thresh)
+    }
   }
 
   map = fluster_obj$tsne
@@ -375,7 +460,7 @@ plot_tsne = function(fluster_obj, marker, mode = c("arithmetic", "robust"),
   }
 }
 
-plot_tsne_spread = function(fluster_obj, markers = NULL, mode = c("arithmetic", "robust"), cex = 50.0, proportional = TRUE, emph = TRUE, highlight_clusters, show_cluster_number) {
+plot_tsne_spread = function(fluster_obj, markers = NULL, mode = c("global", "per-marker"), cex = 50.0, proportional = TRUE, emph = TRUE, highlight_clusters, show_cluster_number) {
   mode = match.arg(mode)
 
   # calculate plot layout

@@ -7,7 +7,7 @@
 plot_fluster_tsne(
   fluster,
   markers = colnames(fluster$centers),
-  mode = c("arithmetic", "robust"),
+  mode = c("global", "per-marker"),
   cex = 20,
   proportional = TRUE,
   emph = TRUE,
@@ -22,7 +22,11 @@ plot_fluster_tsne(
 
 \item{markers}{Markers to include in the spread}
 
-\item{mode}{Compute colors using either arithmetic or robust average}
+\item{mode}{Compute colors using either global or per-marker distributions.  Global
+distributions are color-coded directly by signals produced by the cytometer.  Per-marker
+mode shows colors relative to the positivity threshold for each marker (red colors for
+above-threshold and blue colors for below-threshold) in units of standard deviation
+for each marker.}
 
 \item{cex}{Scale factor for node size}
 
