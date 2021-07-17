@@ -795,8 +795,11 @@ select_extremes = function(med, spread) {
 # colnames MUST match the marker labeling in the data set
 # optional column labeled "Colors" will contain color coding of subsets
 retrieve_categorical_definitions = function(file) {
-  tab = read.csv(file, row.names = NULL, as.is = TRUE)
+  tab = read.csv(file, row.names = NULL, as.is = TRUE, check.names = FALSE)
 
+  # define any empty cell as "dc"
+  tab[tab == ""] = "dc"
+  tab[is.na(tab)] = "dc"
   # now turn the columns into properly ordered factors
   icol = which(tolower(colnames(tab)) == "color")
   idx = (1:ncol(tab))[-icol]
@@ -828,6 +831,7 @@ assign_functional_names = function(fluster_obj, functional_definitions) {
   func_color = rep("black", length = n_clust)
   pheno = fluster_obj$clustering$phenotype
   for (i in 1:n_clust) {
+    match = FALSE
     for (j in 1:nrow(fd)) {
       idx = which(fd[j, ] != "dc")
       cmarkers = colnames(fd)[idx]
@@ -835,6 +839,10 @@ assign_functional_names = function(fluster_obj, functional_definitions) {
       # extract values for cluster
       ctype = as.character(pheno[[i]][cmarkers])
       if (length(which(ctype == def)) == length(idx)) {
+        if (match) {
+          message("cluster ", i, " matches ", func_phenotype[i], " and ", fn[j])
+        }
+        match = TRUE
         func_phenotype[i] = fn[j]
         func_color[i] = fc[j]
       }
